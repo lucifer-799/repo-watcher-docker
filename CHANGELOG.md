@@ -8,6 +8,14 @@
 本项目是 **Repo Watcher**（原作者 MagicCode，MIT 许可）的 Docker 版衍生作品，
 来源与修改说明见 [NOTICE](./NOTICE)，许可条款见 [LICENSE](./LICENSE)。
 
+## [1.1.5] - 2026-11-23
+
+### Changed
+- 前端侧边栏页脚简化：移除「上游项目（原作者 MagicCode）」链接与「©️2026 MagicCode（原作）· Docker 版基于 MIT 二次开发」
+  版权文案，改为**一个 GitHub 图标链接**（inline SVG octocat mark），指向
+  <https://github.com/lucifer-799/repo-watcher-docker>。
+- 合规说明：UI 不再展示版权文字，但 `LICENSE` 与 `NOTICE` 中的原作者版权与 MIT 声明**保持不变**（分发文件仍需保留）。
+
 ## [1.1.4] - 2026-11-23
 
 ### Changed
@@ -138,6 +146,7 @@
 - 提供 `compose.yaml` 与可配置的宿主端口、环境变量（`HOST` / `DB_PATH` / `WWW_DIR` 等）。
 - 前端构建产物由镜像内 `npm run build` 生成（Vite + 单文件打包 + PWA）。
 
+[1.1.5]: #115---2026-11-23
 [1.1.4]: #114---2026-11-23
 [1.1.3]: #113---2026-11-23
 [1.1.2]: #112---2026-11-23

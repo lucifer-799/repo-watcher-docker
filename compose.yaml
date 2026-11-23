@@ -1,6 +1,6 @@
 services:
   repo-watcher:
-    image: ghcr.io/lucifer-799/repo-watcher-docker:latest   # 固定版本改成 :1.1.4；./data 需 uid 1000 可写
+    image: ghcr.io/lucifer-799/repo-watcher-docker:latest   # 固定版本改成 :1.1.5；./data 需 uid 1000 可写
     container_name: repo-watcher
     restart: unless-stopped
     ports:
