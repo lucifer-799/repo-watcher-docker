@@ -4,14 +4,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <link rel="canonical" href="https://repowatcher.160621.xyz//" />
+  <!-- canonical 待发布时按实际部署域名填写 -->
   <!-- 基础 SEO -->
-  <title>仓库检测仪表盘 · Repo Watcher - 多平台仓库更新监控</title>
+  <title>仓库检测仪表盘 · Repo Watcher（Docker 版）- 多平台仓库更新监控</title>
   <meta name="description"
-    content="Repo Watcher 是基于 EdgeOne Makers 边缘函数的多平台仓库更新监控工具，支持 GitHub、Gitee、GitLab、GitCode 与 CNB 的代码提交检测、定时巡检、消息推送与可视化仪表盘。" />
+    content="Repo Watcher（Docker 版）是多平台仓库更新监控工具，支持 GitHub、Gitee、GitLab、GitCode 与 CNB 的代码提交检测、定时巡检、消息推送与可视化仪表盘。基于 MagicCode 原作（MIT）二次开发，可自托管为 Docker 容器。" />
   <meta name="keywords"
-    content="仓库监控,仓库更新监控,GitHub 监控,Gitee 监控,GitLab 监控,CNB 云原生构建,commit 监控,代码提交提醒,定时检测,EdgeOne Makers,Repo Watcher" />
-  <meta name="author" content="MagicCode" />
+    content="仓库监控,仓库更新监控,GitHub 监控,Gitee 监控,GitLab 监控,CNB 监控,commit 监控,代码提交提醒,定时检测,Docker 自托管,Repo Watcher" />
+  <meta name="author" content="MagicCode（原作）；Docker 版由社区二次开发维护" />
   <meta name="robots" content="index, follow, max-image-preview:large" />
   <meta name="googlebot" content="index, follow" />
   <meta name="application-name" content="Repo Watcher" />
@@ -38,12 +38,10 @@
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Repo Watcher" />
   <meta property="og:locale" content="zh_CN" />
-  <meta property="og:title" content="仓库检测仪表盘 · Repo Watcher - 多平台仓库更新监控" />
+  <meta property="og:title" content="仓库检测仪表盘 · Repo Watcher（Docker 版）- 多平台仓库更新监控" />
   <meta property="og:description"
-    content="基于 EdgeOne Makers 边缘函数的多平台仓库更新监控工具，支持 GitHub、Gitee、GitLab、GitCode 与 CNB 的代码提交检测、定时巡检与消息推送。" />
-  <meta property="og:url" content="https://repowatcher.160621.xyz//" />
-  <meta property="og:image" content="https://repowatcher.160621.xyz//light.png" />
-  <meta property="og:image:secure_url" content="https://repowatcher.160621.xyz//light.png" />
+    content="多平台仓库更新监控工具（Docker 版），支持 GitHub、Gitee、GitLab、GitCode 与 CNB 的提交检测、定时巡检与消息推送。" />
+  <!-- og:image / og:url 待发布时按实际部署域名与截图填写 -->
   <meta property="og:image:type" content="image/png" />
   <meta property="og:image:width" content="2198" />
   <meta property="og:image:height" content="1246" />
@@ -53,8 +51,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="仓库检测仪表盘 · Repo Watcher - 多平台仓库更新监控" />
   <meta name="twitter:description"
-    content="基于 EdgeOne Makers 边缘函数的多平台仓库更新监控工具，支持 GitHub、Gitee、GitLab、GitCode 与 CNB 的代码提交检测、定时巡检与消息推送。" />
-  <meta name="twitter:image" content="https://repowatcher.160621.xyz//light.png" />
+    content="多平台仓库更新监控工具（Docker 版），支持 GitHub、Gitee、GitLab、GitCode 与 CNB 的提交检测、定时巡检与消息推送。" />
   <meta name="twitter:image:alt" content="Repo Watcher 仓库检测仪表盘界面预览" />
 
   <!-- 字体：使用 Outfit 替代 Inter，更有个性且更贴合技术工具定位 -->
@@ -69,8 +66,7 @@
       "@type": "WebApplication",
       "name": "Repo Watcher",
       "alternateName": "仓库检测仪表盘",
-      "description": "基于 EdgeOne Makers 边缘函数的多平台仓库更新监控工具，支持 GitHub、Gitee、GitLab、GitCode 与 CNB 的代码提交检测、定时巡检与消息推送。",
-      "url": "https://repowatcher.160621.xyz//",
+      "description": "多平台仓库更新监控工具（Docker 版），支持 GitHub、Gitee、GitLab、GitCode 与 CNB 的提交检测、定时巡检与消息推送。",
       "applicationCategory": "DeveloperApplication",
       "applicationSubCategory": "代码仓库监控",
       "operatingSystem": "Web Browser",
@@ -90,12 +86,12 @@
         "Token 认证提升 API 限流配额",
         "可视化仪表盘与公开 API"
       ],
-      "screenshot": "https://repowatcher.160621.xyz//light.png",
       "author": {
         "@type": "Person",
-        "name": "MagicCode"
+        "name": "MagicCode",
+        "description": "原作者；本仓库为其 MIT 项目的 Docker 版衍生作品"
       },
-      "codeRepository": "https://github.com/magiccode1412/repo-watcher",
+      "codeRepository": "https://github.com/your-org/repo-watcher-docker",
       "license": "https://opensource.org/licenses/MIT"
     }
   </script>
@@ -115,14 +111,13 @@
     <div style="max-width: 1152px; margin: 0 auto; padding: 32px 16px; line-height: 1.8;">
       <h1>仓库检测仪表盘 · Repo Watcher</h1>
       <p>
-        Repo Watcher 是基于 EdgeOne Makers 边缘函数的多平台仓库更新监控工具，支持
+        Repo Watcher（Docker 版）是多平台仓库更新监控工具，支持
         GitHub、Gitee、GitLab、GitCode 与 CNB 的代码提交检测、定时巡检、消息推送与可视化仪表盘。
       </p>
       <p>本页为单页应用，需要启用 JavaScript 才能查看实时数据。你也可以直接调用公开接口 <code>GET /api/repos</code> 获取仓库状态。</p>
       <p>
-        项目地址：
-        <a href="https://github.com/magiccode1412/repo-watcher">GitHub</a> ·
-        <a href="https://cnb.cool/magiccode1412/repo-watcher">CNB 云原生构建</a>
+        本项目为 Repo Watcher 的 Docker 版衍生作品（基于原作者 MagicCode 的 MIT 项目二次开发）。
+        上游项目：<a href="https://cnb.cool/magiccode1412/repo-watcher">Repo Watcher（CNB）</a>
       </p>
     </div>
   </noscript>

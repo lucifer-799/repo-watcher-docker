@@ -11,19 +11,19 @@ const tabs = [
   { key: 'cnb', label: 'CNB' },
   { key: 'notify', label: '通知' },
   { key: 'other', label: '其他' },
-  // 内置定时检测依赖常驻进程，EdgeOne 部署（无守住宿进程）不展示
+  // 内置定时检测依赖常驻进程，无守宿进程的运行时不展示
   { key: 'scheduler', label: '定时检测', feature: 'scheduler' },
   { key: 'security', label: '账户安全', feature: 'changePassword' },
 ]
 
-// 后端能力位：scheduler 仅在自托管常驻进程中可用（EdgeOne 部署为 false，不展示该选项卡）
+// 后端能力位：scheduler 仅在自托管常驻进程中可用（无常驻进程时为 false，不展示该选项卡）
 const capabilities = reactive({ runtime: 'edge', scheduler: false })
 let capsLoaded = false
 
 export function useAdminNav() {
   const { canChangePassword, authFetch } = useAdminAuth()
 
-  // 按能力位过滤：EdgeOne 部署不展示定时检测；网关登录模式不展示账户安全
+  // 按能力位过滤：无常驻进程不展示定时检测；网关登录模式不展示账户安全
   const visibleTabs = computed(() =>
     tabs.filter((t) => {
       if (t.feature === 'scheduler') return capabilities.scheduler === true

@@ -58,11 +58,9 @@
     <!-- 底部链接（原页脚） -->
     <div class="side-menu__footer">
       <div class="side-menu__links">
-        <a href="https://cnb.cool/magiccode1412/repo-watcher" target="_blank" rel="noopener">CNB 云原生构建</a>
-        <span class="side-menu__sep">|</span>
-        <a href="https://github.com/magiccode1412/repo-watcher" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://cnb.cool/magiccode1412/repo-watcher" target="_blank" rel="noopener">上游项目（原作者 MagicCode）</a>
       </div>
-      <p class="side-menu__copyright">©️2026 魔法代码</p>
+      <p class="side-menu__copyright">©️2026 MagicCode（原作）· Docker 版基于 MIT 二次开发</p>
     </div>
   </aside>
 </template>
