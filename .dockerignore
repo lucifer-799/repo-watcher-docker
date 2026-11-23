@@ -17,7 +17,8 @@ edgeone.json
 .idea
 temp
 tmp
-scripts/*.test.mjs
+# 构建/测试脚本不进镜像（vite 构建不需要 scripts/，仅本地质量保证用）
+scripts
 Dockerfile
 .dockerignore
 compose.yaml
