@@ -8,6 +8,8 @@ data
 .codebuddy
 skills-lock.json
 edgeone.json
+.cnb
+.cnb.yml
 *.log
 *.md
 !README.md
