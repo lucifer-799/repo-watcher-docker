@@ -45,10 +45,12 @@ docker run -d --name repo-watcher -p 8080:8080 \
   -v "$PWD/data:/app/data" \
   -e TRUST_GATEWAY_HEADERS=0 -e TRUST_PROXY_HEADERS=false \
   --restart unless-stopped \
-  ghcr.io/lucifer-799/repo-watcher-docker:1.1.3
+  ghcr.io/lucifer-799/repo-watcher-docker:latest
 ```
 
-镜像由 GitHub Actions 在推送 `v*` 标签时自动构建并发布到 ghcr.io。
+镜像由 GitHub Actions 自动构建并发布到 ghcr.io：推 `main` 会更新 `latest`，推 `v*` 标签会生成
+对应的版本标签（如 `1.1.3`、`1.1`）。`compose.yaml` 默认使用 `latest`（跟随最新发布）；
+如需可复现的固定版本，把镜像改为具体 tag（如 `:1.1.3`）或用 `REPO_WATCHER_TAG=1.1.3` 覆盖。
 
 **方式二：从源码本地构建**
 
