@@ -8,11 +8,12 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test:storage": "node scripts/storage-driver-contract.test.mjs",
-    "test:server": "node scripts/server-smoke.test.mjs",
-    "test:auth": "node scripts/auth-mode.test.mjs",
-    "test:proxy": "node scripts/http-proxy.test.mjs",
-    "test": "npm run test:storage && npm run test:auth && npm run test:server && npm run test:proxy"
+    "test:storage": "node test/storage-driver-contract.test.mjs",
+    "test:server": "node test/server-smoke.test.mjs",
+    "test:auth": "node test/auth-mode.test.mjs",
+    "test:proxy": "node test/http-proxy.test.mjs",
+    "test": "node test/storage-driver-contract.test.mjs && node test/auth-mode.test.mjs && node test/server-smoke.test.mjs && node test/http-proxy.test.mjs && node test/security.test.mjs",
+    "test:security": "node test/security.test.mjs"
   },
   "engines": {
     "node": ">=22.13.0"

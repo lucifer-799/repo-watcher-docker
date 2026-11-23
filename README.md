@@ -127,7 +127,8 @@ docker run -d --name repo-watcher -p 8080:8080 \
 npm ci
 npm run dev      # 本地开发（vite）
 npm run build    # 构建前端到 dist/
-npm test         # 跑存储/鉴权/服务/代理测试
+npm test         # 跑全部测试（存储契约 / 鉴权 / 服务冒烟 / 代理 / 安全回归）
+npm run test:security   # 只跑安全回归（JWT 类型、fail-fast、匿名只读、限流、轮换、原型污染等）
 ```
 
 `server/` 为 Node 后端（`node:sqlite`，需 Node 22+），其中：
@@ -135,6 +136,14 @@ npm test         # 跑存储/鉴权/服务/代理测试
 - `server/router.js` 路由分派、`server/scheduler.js` 定时检测、`server/storage/sqlite.js` 存储驱动
 - `server/lib/` 业务基础库（config / auth / services / utils）
 - `server/api/` 各 API 端点处理函数
+
+`test/` 为测试套件（**不打包进镜像**）：
+- `test/storage-driver-contract.test.mjs` 存储驱动契约
+- `test/auth-mode.test.mjs` 鉴权模式与网关身份
+- `test/server-smoke.test.mjs` 服务端冒烟（静态/路由/持久化）
+- `test/http-proxy.test.mjs` HTTP 代理
+- `test/security.test.mjs` 安全回归（锁住 1.0.1→1.1.2 的修复：JWT 令牌类型、启动 fail-fast、
+  匿名只读边界、写端点鉴权、init 并发、登录限流、refresh 轮换、原型污染防护、health、非 root）
 
 `src/` 为 Vue 3 前端。**本项目只支持 Node/Docker 运行时**，不再包含 Edge/EdgeOne 相关代码。
 
