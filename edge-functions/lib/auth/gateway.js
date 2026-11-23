@@ -11,6 +11,21 @@
  */
 
 /**
+ * 统一真值判定（'1' / 'true' / true / 1 均视为真）。
+ *
+ * 该函数是「是否信任网关身份头」的唯一判定口径，供两处共用：
+ *   1. 本文件的 getGatewayPrincipal（运行时逐请求判定）
+ *   2. server/index.js 的启动检查（TCP 暴露 + 信任网关 = 拒绝启动）
+ * 两处口径必须一致，否则会出现「启动检查放行、运行时却信任」的缺口。
+ *
+ * @param {*} v
+ * @returns {boolean}
+ */
+export function isTruthy(v) {
+  return v === true || v === 1 || v === '1' || v === 'true';
+}
+
+/**
  * 判断当前运行环境是否为自托管 Node 常驻进程。
  * 仅当 RUNTIME=node 时才读取网关头，避免 Edge 部署误信客户端伪造的请求头。
  *
@@ -41,9 +56,8 @@ export function getGatewayPrincipal(request, env) {
   // 如果不加这道门，暴露 TCP 就等于把管理员权限公开。Socket（仅 Unix Socket）部署
   // 需在 cmd/main 里显式设置 TRUST_GATEWAY_HEADERS=1 才恢复网关免密。
   const e = env || globalThis;
-  const trust = (e && (e.TRUST_GATEWAY_HEADERS === '1' || e.TRUST_GATEWAY_HEADERS === 'true'))
-    || globalThis.TRUST_GATEWAY_HEADERS === '1'
-    || globalThis.TRUST_GATEWAY_HEADERS === 'true';
+  // 与启动检查共用同一判定口径，避免两处语义漂移
+  const trust = isTruthy(e && e.TRUST_GATEWAY_HEADERS) || isTruthy(globalThis.TRUST_GATEWAY_HEADERS);
   if (!trust) {
     return { userId: null, username: null, isAdmin: false, present: false };
   }

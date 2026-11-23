@@ -40,6 +40,12 @@
 **v1.1.0**：整理为可对外发布的形态 —— 移除全部 fpk 资产，重写 README（含来源声明）与
 `NOTICE`，内部地址/CI 配置占位化，新增 `.env.example`；并以全新历史发布（旧开发历史已归档）。
 
+**v1.1.1**：修复代码评审发现的 1 项 critical 与 3 项 high ——
+①`TRUST_GATEWAY_HEADERS` 启动 fail-fast 与运行时判定统一口径（TCP 暴露 + 信任网关头 → 直接拒绝启动）；
+②登录限流取客户端 IP 改用 `x-real-ip`/XFF 最右一跳（不再信任可伪造的最左值）；
+③JWT 的 env 改为显式传参（消除模块级共享状态在并发下的交叉污染）；
+④refresh 轮换改为「先建新会话、成功后再消费旧令牌」，失败不丢会话。另清理 EdgeOne 残留脚本/关键词。
+
 ---
 
 ## 快速开始（Docker）
@@ -58,11 +64,11 @@ docker compose up -d --build
 也可不用 compose：
 
 ```bash
-docker build -t repo-watcher:1.1.0 .
+docker build -t repo-watcher:1.1.1 .
 docker run -d --name repo-watcher -p 8080:8080 \
   -v "$PWD/data:/app/data" \
   -e TRUST_GATEWAY_HEADERS=0 \
-  --restart unless-stopped repo-watcher:1.1.0
+  --restart unless-stopped repo-watcher:1.1.1
 ```
 
 ### 环境变量

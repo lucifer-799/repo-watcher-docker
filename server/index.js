@@ -23,6 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { createSqliteDriver } from './storage/sqlite.js';
 import { dispatch, normalizePath } from './router.js';
 import { startScheduler, stopScheduler } from './scheduler.js';
+import { isTruthy } from '../edge-functions/lib/auth/gateway.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
@@ -297,8 +298,13 @@ server.on('error', (err) => {
 if (PORT) {
   // 加固：TCP 模式对外暴露端口，此时若同时信任网关身份头，任何人直连即可伪造管理员身份。
   // 故拒绝启动，强制运维二者只选其一。
-  if (String(process.env.TRUST_GATEWAY_HEADERS || '0') === '1') {
-    console.error('[server] 拒绝启动：PORT 模式（对外 TCP）不允许 TRUST_GATEWAY_HEADERS=1，否则可伪造网关管理员身份');
+  if (isTruthy(process.env.TRUST_GATEWAY_HEADERS)) {
+    console.error(
+      '[server] 拒绝启动：检测到 PORT（对外 TCP 监听）且 TRUST_GATEWAY_HEADERS 为真值(' +
+      process.env.TRUST_GATEWAY_HEADERS + ')。' +
+      'TCP 暴露时必须关闭网关身份头信任，否则任何人可伪造 X-Trim-Isadmin 头提权为管理员。' +
+      '请将 TRUST_GATEWAY_HEADERS 设为 0（或删除该变量）后重启。'
+    );
     process.exit(1);
   }
   // TCP 模式（docker / 反代）。TRUST_GATEWAY_HEADERS 必须保持关闭，否则提权风险。

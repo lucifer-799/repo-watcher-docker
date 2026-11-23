@@ -1,14 +1,13 @@
 {
   "name": "repo-watcher",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "仓库更新监控（Docker 版）—— 基于 MagicCode 的 Repo Watcher 二次开发",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "edgeone makers deploy",
     "test:storage": "node scripts/storage-driver-contract.test.mjs",
     "test:server": "node scripts/server-smoke.test.mjs",
     "test:auth": "node scripts/auth-mode.test.mjs",
@@ -19,11 +18,16 @@
     "node": ">=22.13.0"
   },
   "keywords": [
-    "edgeone-makers",
     "github",
+    "gitee",
+    "gitlab",
+    "gitcode",
     "cnb",
-    "monitor",
-    "notification"
+    "repo-monitor",
+    "commit-monitor",
+    "notification",
+    "docker",
+    "self-hosted"
   ],
   "author": "MagicCode",
   "license": "MIT",

@@ -14,9 +14,31 @@ const MAX_FAILS = 5;              // 连续失败阈值
 const BASE_LOCK_MS = 60_000;      // 首次锁定时长
 const MAX_LOCK_MS = 15 * 60_000;  // 锁定上限
 
+/**
+ * 取客户端 IP（用于登录失败限流的分桶键）。
+ *
+ * 取值优先级（1.1.1 修正）：
+ *   1. `x-real-ip` —— 由反向代理（NPM/Caddy/Nginx）**覆盖设置**，客户端自带同名头会被代理覆盖，
+ *      因此比 XFF 更难伪造；
+ *   2. `x-forwarded-for` 的**最右一跳** —— 由最近一级可信代理追加，而非客户端可控的最左值；
+ *   3. 'unknown' 兜底（此时所有匿名请求共用同一桶，只会更严格、不会绕过）。
+ *
+ * 修正原因：旧实现取 XFF **最左值**，攻击者只要在请求里自带
+ * `X-Forwarded-For: <随机IP>` 就能每次换一个桶，从而无限绕过失败锁定。
+ *
+ * 注意：最彻底的防线在反向代理层（丢弃/覆盖客户端自带的 XFF、并设置 x-real-ip）。
+ * 本函数保证「即使代理透传了客户端 XFF，也不会用可伪造的最左值分桶」。
+ */
 function clientIp(request) {
-  const xff = (request.headers.get('x-forwarded-for') || '').split(',')[0].trim();
-  return xff || request.headers.get('x-real-ip') || 'unknown';
+  const realIp = (request.headers.get('x-real-ip') || '').trim();
+  if (realIp) return realIp;
+  const xff = (request.headers.get('x-forwarded-for') || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  // 最右一跳 = 最近可信代理追加的值
+  if (xff.length) return xff[xff.length - 1];
+  return 'unknown';
 }
 
 function failKey(username, request) {

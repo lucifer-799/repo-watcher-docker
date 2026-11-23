@@ -10,8 +10,11 @@
 // 统一获取全局 crypto（EdgeOne/Workers 中以 globalThis.crypto 暴露，兜底避免运行时未定义）
 const crypto = globalThis.crypto;
 
-// EdgeOne 普通环境变量（JWT_SECRET 等）注入在 context.env，非全局变量。
-// 由入口函数通过 initEnv(env) 注入，工具函数按需读取。
+// ⚠️ 并发安全（1.1.1 修正）：原先 env 只存在模块级可变变量 runtimeEnv 里，
+// 由每次调用 initEnv(env) 覆盖——两个并发请求交错时会互相覆盖（A 写入 envA 后、
+// 被 B 覆盖成 envB，A 随后用错误的 secret 签发/校验）。
+// 现在改为「显式向下传参」为主路径：signToken/verifyToken 接受 env 参数并直接使用；
+// runtimeEnv 仅作未传参时的兜底（EdgeOne 路径），不再作为跨请求的共享状态。
 let runtimeEnv = null;
 export function initEnv(env) {
   if (env) runtimeEnv = env;
@@ -35,10 +38,9 @@ function b64urlDecode(str) {
   return bytes;
 }
 
-function getSecret() {
-  // EdgeOne 普通环境变量注入在 context.env（JWT_SECRET），非全局变量。
-  // 兼容多种命名/位置，便于排查配置问题。
-  const env = runtimeEnv || globalThis;
+function getSecret(envArg) {
+  // 优先使用调用方显式传入的 env（并发安全）；未传时回落兜底值。
+  const env = envArg || runtimeEnv || globalThis;
   const s =
     (env && env.JWT_SECRET) ||
     (env && env.jwt_secret) ||
@@ -72,13 +74,12 @@ function genJti() {
  * 签发 token
  */
 export async function signToken(payload, expiresInSeconds, env) {
-  if (env) initEnv(env);
   const now = Math.floor(Date.now() / 1000);
   const body = { ...payload, iat: now, exp: now + expiresInSeconds };
   const header = { alg: 'HS256', typ: 'JWT' };
   const headerB64 = b64url(JSON.stringify(header));
   const payloadB64 = b64url(JSON.stringify(body));
-  const secret = getSecret();
+  const secret = getSecret(env);
   const sig = await crypto.subtle.importKey('raw', secret, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const signature = await crypto.subtle.sign('HMAC', sig, enc.encode(`${headerB64}.${payloadB64}`));
   return `${headerB64}.${payloadB64}.${base64UrlFromBytes(signature)}`;
@@ -92,12 +93,12 @@ export async function signToken(payload, expiresInSeconds, env) {
  *   防止 refresh token（7 天）被当作 access token（15 分钟）使用。
  * @returns {Promise<Object>} 载荷
  */
-export async function verifyToken(token, expectedType) {
+export async function verifyToken(token, expectedType, env) {
   const parts = token.split('.');
   if (parts.length !== 3) throw new Error('invalid token format');
   const [headerB64, payloadB64, sigB64] = parts;
 
-  const secret = getSecret();
+  const secret = getSecret(env);
   const key = await crypto.subtle.importKey('raw', secret, { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
   const valid = await crypto.subtle.verify(
     'HMAC',
@@ -119,13 +120,13 @@ export async function verifyToken(token, expectedType) {
 }
 
 /** 仅接受 access 类型令牌 */
-export function verifyAccessToken(token) {
-  return verifyToken(token, 'access');
+export function verifyAccessToken(token, env) {
+  return verifyToken(token, 'access', env);
 }
 
 /** 仅接受 refresh 类型令牌 */
-export function verifyRefreshToken(token) {
-  return verifyToken(token, 'refresh');
+export function verifyRefreshToken(token, env) {
+  return verifyToken(token, 'refresh', env);
 }
 
 /**
