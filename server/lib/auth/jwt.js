@@ -1,24 +1,16 @@
 /**
  * JWT 双 Token（access + refresh）认证
  *
- * 使用 Web Crypto (HMAC-SHA256) 实现，Edge Functions 与 Cloud Functions(Node) 通用，
- * 无需引入 jsonwebtoken / jose 依赖。
+ * 使用 Web Crypto (HMAC-SHA256) 实现，Node 运行时通用，无需引入 jsonwebtoken / jose 依赖。
  *
  * 签名密钥：受保护环境变量 JWT_SECRET（仅服务端，不进 KV、不暴露 UI）。
  */
 
-// 统一获取全局 crypto（EdgeOne/Workers 中以 globalThis.crypto 暴露，兜底避免运行时未定义）
+// 统一获取全局 crypto（Node 18+ 通过 globalThis.crypto 提供 Web Crypto）
 const crypto = globalThis.crypto;
 
-// ⚠️ 并发安全（1.1.1 修正）：原先 env 只存在模块级可变变量 runtimeEnv 里，
-// 由每次调用 initEnv(env) 覆盖——两个并发请求交错时会互相覆盖（A 写入 envA 后、
-// 被 B 覆盖成 envB，A 随后用错误的 secret 签发/校验）。
-// 现在改为「显式向下传参」为主路径：signToken/verifyToken 接受 env 参数并直接使用；
-// runtimeEnv 仅作未传参时的兜底（EdgeOne 路径），不再作为跨请求的共享状态。
-let runtimeEnv = null;
-export function initEnv(env) {
-  if (env) runtimeEnv = env;
-}
+// 并发安全：env 一律由调用方显式传入（signToken/verifyToken 的 env 参数）。
+// 不保留任何模块级共享状态（原模块级 env 兜底已删除）。
 
 const enc = new TextEncoder();
 const dec = new TextDecoder();
@@ -39,8 +31,9 @@ function b64urlDecode(str) {
 }
 
 function getSecret(envArg) {
-  // 优先使用调用方显式传入的 env（并发安全）；未传时回落兜底值。
-  const env = envArg || runtimeEnv || globalThis;
+  // 只使用调用方显式传入的 env；未传时退回 globalThis（进程级环境变量），
+  // 不存在跨请求共享的可变状态。
+  const env = envArg || globalThis;
   const s =
     (env && env.JWT_SECRET) ||
     (env && env.jwt_secret) ||
@@ -132,7 +125,7 @@ export function verifyRefreshToken(token, env) {
 /**
  * 生成双 Token
  * @param {string} username 管理员用户名
- * @param {Object} [env] EdgeOne context.env（用于注入 JWT_SECRET 等环境变量）
+ * @param {Object} [env] 运行时环境（用于注入 JWT_SECRET 等环境变量）
  * @returns {Promise<{accessToken: string, refreshToken: string, jti: string}>}
  */
 export async function issueTokens(username, env) {

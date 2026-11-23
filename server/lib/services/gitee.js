@@ -1,13 +1,12 @@
-import { getRepoData, saveRepoData } from '../utils/kv.js';
-import { fetchWithProxy } from '../utils/index.js';
+import { getRepoData, saveRepoData, fetchWithProxy } from '../utils/index.js';
 
 /**
- * 解析单个 GitCode 仓库字符串（格式：owner/repo 或 owner/repo@branch）
+ * 解析单个 Gitee 仓库字符串（格式：owner/repo 或 owner/repo@branch）
  * @param {string} repoStr 单个仓库字符串
  * @param {string} defaultBranch 默认分支
  * @returns {{owner: string, repo: string, branch: string}|null}
  */
-export function parseGitCodeRepoString(repoStr, defaultBranch) {
+export function parseGiteeRepoString(repoStr, defaultBranch) {
   const parts = repoStr.split('@');
   const repoParts = parts[0].split('/');
 
@@ -21,52 +20,48 @@ export function parseGitCodeRepoString(repoStr, defaultBranch) {
 }
 
 /**
- * 检测单个 GitCode 仓库是否有更新
- * GitCode 提供 Gitee 风格（/api/v5）接口：GET /api/v5/repos/{owner}/{repo}/commits/{branch}
- * 鉴权使用 access_token 查询参数（公开仓库可免 token）。响应结构与 Gitee 一致：
- * 顶层 sha、嵌套 commit.author.date / commit.message。
+ * 检测单个 Gitee 仓库是否有更新
  * @param {{owner: string, repo: string, branch: string}} repoInfo 仓库信息
  * @param {Object} config 配置对象
  * @returns {Promise<Object>}
  */
-export async function checkGitCodeRepoUpdate(repoInfo, config) {
+export async function checkGiteeRepoUpdate(repoInfo, config) {
   const { owner, repo, branch } = repoInfo;
-  const repoKey = `gitcode:${owner}/${repo}@${branch}`;
-  const apiBase = config?.gitcode?.apiBase || 'https://gitcode.com';
-  const gitcodeHost = config?.gitcode?.host || 'gitcode.com';
-  const repoUrl = `https://${gitcodeHost}/${owner}/${repo}`;
+  const repoKey = `gitee:${owner}/${repo}@${branch}`;
+  const repoUrl = `https://gitee.com/${owner}/${repo}`;
 
-  // 构建 GitCode API 请求（Gitee 风格 /api/v5，owner/repo 为普通路径，不做编码）
-  const apiUrl = `${apiBase}/api/v5/repos/${owner}/${repo}/commits/${branch}`;
+  // 构建 Gitee API 请求
+  const apiUrl = `https://gitee.com/api/v5/repos/${owner}/${repo}/commits/${branch}`;
   const requestHeaders = {
-    'User-Agent': 'GitCode-Repo-Watcher-EdgeOne-Makers',
+    'User-Agent': 'Repo-Watcher-Docker',
   };
 
-  // GitCode 使用 access_token 查询参数认证（公开仓库无需 token）
+  // 构建请求 URL（Gitee 使用 private_token 参数认证）
   let requestUrl = apiUrl;
-  if (config?.gitcode?.token) {
-    requestUrl = `${apiUrl}?access_token=${encodeURIComponent(config.gitcode.token)}`;
+  if (config?.gitee?.token) {
+    requestUrl = `${apiUrl}?private_token=${config.gitee.token}`;
   }
 
   let response;
 
   try {
-    // 调用 GitCode API（可按平台配置 HTTP 代理）
-    response = await fetchWithProxy(requestUrl, { headers: requestHeaders }, config?.gitcode?.proxy);
+    // 调用 Gitee API（可按平台配置 HTTP 代理）
+    response = await fetchWithProxy(requestUrl, { headers: requestHeaders }, config?.gitee?.proxy);
 
     // 检查 API 响应状态
     if (!response.ok) {
-      throw new Error(`GitCode API 请求失败: ${response.status} ${response.statusText}`);
+      throw new Error(`Gitee API 请求失败: ${response.status} ${response.statusText}`);
     }
 
-    // 解析 API 响应（Gitee 风格：顶层 sha，commit.author.date，commit.message）
+    // 解析 API 响应
     const data = await response.json();
     const latestSha = data.sha;
+    // Gitee API 返回 commit.author.date 或 commit.committer.date
     const latestDate = data.commit?.author?.date || data.commit?.committer?.date || new Date().toISOString();
     const commitMessage = data.commit?.message || '';
 
-    // 从 KV 获取上次记录的数据
-    const previousData = await getRepoData(repoKey, 'gitcode');
+    // 从 KV 获取上次记录的数据（使用全局变量）
+    const previousData = await getRepoData(repoKey, 'gitee');
     const previousSha = previousData && typeof previousData === 'object'
       ? (previousData.sha || null)
       : (previousData || null);
@@ -92,7 +87,7 @@ export async function checkGitCodeRepoUpdate(repoInfo, config) {
 
     return {
       repo: repoKey,
-      platform: 'gitcode',
+      platform: 'gitee',
       hasUpdate,
       latestSha,
       latestDate,
@@ -102,7 +97,7 @@ export async function checkGitCodeRepoUpdate(repoInfo, config) {
       url: repoUrl
     };
   } catch (error) {
-    console.error(`检测 GitCode 仓库 ${repoKey} 失败:`, error);
+    console.error(`检测 Gitee 仓库 ${repoKey} 失败:`, error);
     const previousData = await getRepoData(repoKey);
     const previousSha = previousData && typeof previousData === 'object'
       ? (previousData.sha || null)
@@ -117,7 +112,7 @@ export async function checkGitCodeRepoUpdate(repoInfo, config) {
 
     return {
       repo: repoKey,
-      platform: 'gitcode',
+      platform: 'gitee',
       hasUpdate: false,
       latestSha: '',
       latestDate: '',
@@ -129,23 +124,22 @@ export async function checkGitCodeRepoUpdate(repoInfo, config) {
 }
 
 /**
- * 获取 GitCode API 限流信息（GitCode 未公开稳定限流接口，失败时返回未知）
+ * 获取 Gitee API 限流信息
  * @param {Object} config 配置对象
  * @returns {Promise<Object>}
  */
-export async function getGitCodeRateLimitInfo(config) {
-  const apiBase = config?.gitcode?.apiBase || 'https://gitcode.com';
+export async function getGiteeRateLimitInfo(config) {
   const requestHeaders = {
-    'User-Agent': 'GitCode-Repo-Watcher-EdgeOne-Makers',
+    'User-Agent': 'Repo-Watcher-Docker',
   };
 
-  let requestUrl = `${apiBase}/api/v5/rate_limit`;
-  if (config?.gitcode?.token) {
-    requestUrl = `${requestUrl}?access_token=${encodeURIComponent(config.gitcode.token)}`;
+  let requestUrl = 'https://gitee.com/api/v5/rate_limit';
+  if (config?.gitee?.token) {
+    requestUrl = `${requestUrl}?private_token=${config.gitee.token}`;
   }
 
   try {
-    const response = await fetchWithProxy(requestUrl, { headers: requestHeaders }, config?.gitcode?.proxy);
+    const response = await fetchWithProxy(requestUrl, { headers: requestHeaders }, config?.gitee?.proxy);
     const data = await response.json();
     return {
       limit: data.rate?.limit?.toString() || '未知',

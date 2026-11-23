@@ -1,20 +1,17 @@
 /**
- * KV 存储操作工具 (EdgeOne Makers 适配版)
+ * KV 存储操作工具（Docker / Node 版）
  *
- * EdgeOne Makers 中 KV 是全局变量（在控制台绑定后自动注入），
- * 变量名为 MY_KV（计划文档约定），所有键统一加 repo_watcher_ 前缀。
- *
- * 使用前请确保:
- * 1. 在 EdgeOne Makers 控制台启用 KV Storage
- * 2. 创建命名空间并绑定到项目，变量名设为 MY_KV
+ * 本项目只支持自托管 Node/Docker 运行时：服务启动时由 server/index.js 通过
+ * setStorageDriver() 注入 SQLite 驱动（server/storage/sqlite.js）。
+ * **不内置任何 Edge / EdgeOne KV 支持**（已随 1.1.2 精简删除）。
  *
  * ---- 存储驱动抽象 ----
- * 本文件是全项目唯一的存储耦合点。对外暴露的 8 个函数（kvGet / kvGetJSON / kvPut /
- * kvPutJSON / kvDelete / kvList / getRepoData / saveRepoData）签名与语义保持不变，
- * 内部转发给当前激活的存储驱动：
+ * 本文件是全项目唯一的存储耦合点。对外暴露的函数（kvGet / kvGetJSON / kvPut /
+ * kvPutJSON / kvDelete / kvList / getRepoData / saveRepoData / kvUpdate / kvPutIfAbsent）
+ * 签名与语义保持不变，内部转发给当前激活的存储驱动：
  *
- *   - 默认驱动：EdgeOne KV 全局变量（Edge 部署，行为与改造前完全一致）。
- *   - 自定义驱动：自托管 Node 常驻进程在启动时通过 setStorageDriver() 注入（如 SQLite）。
+ *   - 唯一驱动：自托管 Node 常驻进程启动时注入的 SQLite 实现。
+ *   - 未注入时所有存储操作直接抛错（fail-closed，避免静默丢数据）。
  *
  * 驱动契约（所有方法接收的 key 均已带 repo_watcher_ 前缀）：
  *   get(fullKey)                       -> Promise<string | null>      缺失返回 null
@@ -24,83 +21,24 @@
  *   list(fullPrefix, cursor, limit)    -> Promise<{ keys: [{name}], cursor?, complete }>
  *   deletePrefix(fullPrefix)           -> Promise<number>             删除条数（可选实现）
  *
- * ⚠️ 约束：本文件禁止新增任何 import，尤其禁止 node:sqlite 等 Node 内置模块。
- * edge-functions/ 由 EdgeOne 平台打包，出现无法解析的符号会导致构建失败（历史出现过 545）。
- * SQLite 等驱动实现一律放在 edge-functions/ 之外，由外部导入本文件后注入。
+ * 说明：SQLite 驱动实现放在 server/storage/sqlite.js，由 server/index.js 注入本模块；
+ * 本文件自身不 import 任何 Node 内置模块（便于用内存驱动做单元测试）。
  */
 
 // 所有 KV 存储键统一加上的前缀
 const KV_KEY_PREFIX = 'repo_watcher_';
 
-// EdgeOne Makers 控制台绑定 KV 命名空间后，变量以「全局变量」形式注入，
-// 变量名大小写敏感（官方示例与默认值均为小写 my_kv）。
-// 通过 globalThis 安全访问，避免直接引用裸标识符导致打包器「未定义外部符号」构建失败（返回 545）。
-// 兼容优先级：my_kv（小写，官方约定）> MY_KV（大写，旧约定）
-function getKV() {
-  const g = (typeof globalThis !== 'undefined' && globalThis) ? globalThis : {};
-  if (g.my_kv) return g.my_kv;
-  if (g.MY_KV) return g.MY_KV;
-  return undefined;
-}
-
-// KV 调用超时保护：避免客户端异常时请求永久 pending 导致 504 超时。
-// 仅作用于默认 KV 驱动（网络调用）；本地 SQLite 驱动为同步本地调用，无需套定时器。
-const KV_TIMEOUT_MS = 8000;
-function withTimeout(promise, label) {
-  let timer;
-  const timeout = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`KV ${label} timeout`)), KV_TIMEOUT_MS);
-  });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
-}
-
-/**
- * 默认存储驱动：EdgeOne KV 全局变量。
- * 收发双方均使用「已带 repo_watcher_ 前缀」的完整 key。
- */
-const kvDriver = {
-  async get(fullKey) {
-    const kv = getKV();
-    if (!kv) throw new Error('KV not bound (MY_KV/my_kv undefined)');
-    return withTimeout(kv.get(fullKey), 'get');
-  },
-
-  async getJSON(fullKey) {
-    const kv = getKV();
-    if (!kv) throw new Error('KV not bound (MY_KV/my_kv undefined)');
-    return withTimeout(kv.get(fullKey, 'json'), 'getJSON');
-  },
-
-  async put(fullKey, value) {
-    const kv = getKV();
-    if (!kv) throw new Error('KV not bound (MY_KV/my_kv undefined)');
-    return withTimeout(kv.put(fullKey, value), 'put');
-  },
-
-  async delete(fullKey) {
-    const kv = getKV();
-    if (!kv) throw new Error('KV not bound (MY_KV/my_kv undefined)');
-    return withTimeout(kv.delete(fullKey), 'delete');
-  },
-
-  async list(fullPrefix, cursor, limit) {
-    const kv = getKV();
-    if (!kv) throw new Error('KV not bound (MY_KV/my_kv undefined)');
-    return withTimeout(kv.list({ prefix: fullPrefix, cursor, limit: limit || 1000 }), 'list');
-  },
-};
-
 // ---- 驱动注册 ----
 
-// 当前激活的驱动。为 null 时回落到默认 KV 驱动（Edge 部署路径）。
+// 当前激活的驱动。必须由 server/index.js 在启动时注入 SQLite 驱动；
+// 未注入时为 null，所有存储操作抛错（fail-closed，避免静默丢数据）。
 let activeDriver = null;
 
 /**
- * 注册自定义存储驱动（自托管 Node 部署在启动时调用）。
- * Edge 部署不调用，始终走默认 KV 驱动。
+ * 注册存储驱动（server/index.js 启动时注入 SQLite 实现）。
  *
- * 注意：驱动一旦注册即对本进程全局生效，且无法回退为默认驱动——
- * 这是刻意为之，避免运行期出现「一半请求走 KV、一半走 SQLite」的数据分裂。
+ * 注意：驱动一旦注册即对本进程全局生效，无法回退——
+ * 避免运行期出现「一半请求走某个驱动、一半走另一个」的数据分裂。
  *
  * @param {Object} driver 存储驱动，至少需实现 get() 与 put()
  */
@@ -116,11 +54,15 @@ export function setStorageDriver(driver) {
  * @returns {Object}
  */
 export function getStorageDriver() {
-  return activeDriver || kvDriver;
+  return activeDriver;
 }
 
 function getDriver() {
-  return activeDriver || kvDriver;
+  if (!activeDriver) {
+    // 未注入驱动：直接报错，而不是静默失败（fail-closed）
+    throw new Error('存储驱动未初始化：请先调用 setStorageDriver() 注入 SQLite 驱动');
+  }
+  return activeDriver;
 }
 
 function withPrefix(key) {
@@ -158,7 +100,7 @@ export async function kvDelete(key) {
 /**
  * 仅当 key 不存在时写入（原子 CAS，用于消除「检查-写入」竞态）。
  * 驱动实现 putIfAbsent 时使用数据库级原子语义；否则退化为「读-判-写」（非严格原子，
- * 仅 Edge 部署下如此，自托管 SQLite 驱动为真原子）。
+ * 本项目的 SQLite 驱动为真原子（唯一约束）。
  * @returns {Promise<boolean>} true=写入成功，false=已存在（未覆盖）
  */
 export async function kvPutIfAbsent(key, value) {

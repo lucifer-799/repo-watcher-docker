@@ -14,7 +14,7 @@ import { getGatewayPrincipal } from './gateway.js';
  * 只监听 Unix Socket，详见 lib/auth/gateway.js 顶部说明。
  *
  * @param {Request} request
- * @param {Object} [env] EdgeOne context.env（用于注入 JWT_SECRET 等环境变量）
+ * @param {Object} [env] 运行时环境（用于注入 JWT_SECRET 等环境变量）
  * @returns {Promise<{ok: boolean, status?: number, message?: string, payload?: Object, mode?: string}>}
  */
 export async function requireAccess(request, env) {
@@ -30,7 +30,7 @@ export async function requireAccess(request, env) {
     }
   }
 
-  // 网关管理员分支：仅自托管 Node 运行时生效，Edge 部署恒为 present=false
+  // 网关管理员分支：仅自托管 Node 运行时生效，其他运行时恒为 present=false
   const principal = getGatewayPrincipal(request, env);
   if (principal.isAdmin) {
     return {

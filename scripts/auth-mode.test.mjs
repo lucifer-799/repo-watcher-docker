@@ -2,7 +2,7 @@
  * 混合认证模式测试
  *
  * 核心安全属性：X-Trim-* 头只在自托管 Node 运行时（RUNTIME=node）被信任。
- * Edge 部署下必须完全忽略这些头，否则任何人都能伪造请求头提权为管理员。
+ * 非 Node 运行时（或未显式开启信任）下必须完全忽略这些头，否则任何人都能伪造请求头提权为管理员。
  *
  * 运行：node scripts/auth-mode.test.mjs
  */
@@ -46,19 +46,20 @@ const memDriver = (() => {
   };
 })();
 
-const kv = await import('../edge-functions/lib/utils/kv.js');
+const kv = await import('../server/lib/utils/kv.js');
 kv.setStorageDriver(memDriver);
 
 const { getGatewayPrincipal, isNodeRuntime } = await import(
-  '../edge-functions/lib/auth/gateway.js'
+  '../server/lib/auth/gateway.js'
 );
-const { requireAccess } = await import('../edge-functions/lib/auth/middleware.js');
-const { initAdmin } = await import('../edge-functions/lib/auth/admin.js');
-const { onRequestGet: reposGet } = await import('../edge-functions/api/repos.js');
+const { requireAccess } = await import('../server/lib/auth/middleware.js');
+const { initAdmin } = await import('../server/lib/auth/admin.js');
+const { onRequestGet: reposGet } = await import('../server/api/repos.js');
 
 // TRUST_GATEWAY_HEADERS='1' 模拟「可信网关前置」场景（1.0.0 起默认为关，必须显式开启才信任网关头）
 const NODE_ENV = { RUNTIME: 'node', TRUST_GATEWAY_HEADERS: '1', JWT_SECRET: 'j'.repeat(64) };
-const EDGE_ENV = { JWT_SECRET: 'j'.repeat(64) };
+// 无 RUNTIME 标记 = 非 Node 常驻进程（等价于「不识别网关头」的场景）
+const NON_NODE_ENV = { JWT_SECRET: 'j'.repeat(64) };
 
 const FAKE_ADMIN = {
   'X-Trim-Userid': '1000',
@@ -76,7 +77,7 @@ console.log('混合认证模式测试\n');
 
 await it('isNodeRuntime：RUNTIME=node 时为 true，未设置时为 false', () => {
   assert.equal(isNodeRuntime(NODE_ENV), true);
-  assert.equal(isNodeRuntime(EDGE_ENV), false);
+  assert.equal(isNodeRuntime(NON_NODE_ENV), false);
   assert.equal(isNodeRuntime(undefined), false);
 });
 
@@ -89,9 +90,9 @@ await it('Node 运行时解析网关头', () => {
   assert.equal(p.present, true);
 });
 
-await it('Edge 运行时完全忽略网关头（防伪造提权）', () => {
-  const p = getGatewayPrincipal(req(FAKE_ADMIN), EDGE_ENV);
-  assert.equal(p.isAdmin, false, 'Edge 下不得信任 X-Trim-Isadmin');
+await it('非 Node 运行时完全忽略网关头（防伪造提权）', () => {
+  const p = getGatewayPrincipal(req(FAKE_ADMIN), NON_NODE_ENV);
+  assert.equal(p.isAdmin, false, '非 Node 运行时不得信任 X-Trim-Isadmin');
   assert.equal(p.present, false);
 });
 
@@ -127,9 +128,9 @@ await it('Isadmin 前后空白由 Headers API 按 Fetch 规范裁剪后视为 "1
 
 // ---- requireAccess 分支 ----
 
-await it('【关键】Edge 部署下伪造 X-Trim-Isadmin 仍返回 401', async () => {
-  const res = await requireAccess(req(FAKE_ADMIN), EDGE_ENV);
-  assert.equal(res.ok, false, 'Edge 下伪造管理员头不得通过鉴权');
+await it('【关键】未识别网关身份时伪造 X-Trim-Isadmin 仍返回 401', async () => {
+  const res = await requireAccess(req(FAKE_ADMIN), NON_NODE_ENV);
+  assert.equal(res.ok, false, '伪造管理员头不得通过鉴权');
   assert.equal(res.status, 401);
 });
 
@@ -164,8 +165,8 @@ await it('无效 token 在 Node 下回落网关分支，非管理员仍被拒', 
 await it('密码模式：初始化后可用 token 通过，mode=password', async () => {
   await initAdmin('admin', 'password123');
 
-  const { issueTokens } = await import('../edge-functions/lib/auth/jwt.js');
-  const { saveSession } = await import('../edge-functions/lib/auth/admin.js');
+  const { issueTokens } = await import('../server/lib/auth/jwt.js');
+  const { saveSession } = await import('../server/lib/auth/admin.js');
   const { accessToken, jti } = await issueTokens('admin', NODE_ENV);
   await saveSession(jti);
 
@@ -180,7 +181,7 @@ await it('密码模式：初始化后可用 token 通过，mode=password', async
 // ---- /api/repos 鉴权（锁定后需令牌）----
 
 await it('【关键】/api/repos 未携带令牌也能读取（1.0.1 起仪表盘匿名只读），但不含敏感字段', async () => {
-  const res = await reposGet({ request: req({}), env: EDGE_ENV });
+  const res = await reposGet({ request: req({}), env: NON_NODE_ENV });
   assert.equal(res.status, 200, '匿名应可只读仪表盘');
   const body = await res.json();
   const repos = (body && body.data && body.data.repos) || [];
@@ -194,11 +195,11 @@ await it('【关键】/api/repos 未携带令牌也能读取（1.0.1 起仪表�
 
 await it('/api/repos 携带有效管理员令牌返回 200', async () => {
   // 管理员已在前序用例初始化；此处仅签发并保存新会话
-  const { issueTokens } = await import('../edge-functions/lib/auth/jwt.js');
-  const { saveSession } = await import('../edge-functions/lib/auth/admin.js');
-  const { accessToken, jti } = await issueTokens('admin', EDGE_ENV);
+  const { issueTokens } = await import('../server/lib/auth/jwt.js');
+  const { saveSession } = await import('../server/lib/auth/admin.js');
+  const { accessToken, jti } = await issueTokens('admin', NON_NODE_ENV);
   await saveSession(jti);
-  const res = await reposGet({ request: req({ Authorization: `Bearer ${accessToken}` }), env: EDGE_ENV });
+  const res = await reposGet({ request: req({ Authorization: `Bearer ${accessToken}` }), env: NON_NODE_ENV });
   assert.equal(res.status, 200);
   const data = await res.json();
   assert.equal(data.code, 200);

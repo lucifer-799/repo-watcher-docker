@@ -2,13 +2,13 @@
  * 管理员凭据与会话管理
  *
  * - 管理员哈希存于 KV: repo_watcher_admin（{ username, hash }）
- * - 使用 PBKDF2（Web Crypto）替代 bcrypt，Edge / Node 通用
+ * - 使用 PBKDF2（Web Crypto）替代 bcrypt，无外部依赖
  * - refresh token 的 jti 存于 repo_watcher_session:<jti>，登出/改密时删除即吊销
  */
 
 import { kvGetJSON, kvPutJSON, kvDelete, kvDeletePrefix, kvPutIfAbsent } from '../utils/kv.js';
 
-// 统一获取全局 crypto（EdgeOne/Workers 中以 globalThis.crypto 暴露）
+// 统一获取全局 crypto（Node 18+ 通过 globalThis.crypto 提供 Web Crypto）
 const crypto = globalThis.crypto;
 
 const ADMIN_KEY = 'admin';

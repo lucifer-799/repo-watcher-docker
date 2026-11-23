@@ -54,6 +54,10 @@
 代理认证头不再泄漏进 CONNECT 隧道、SQLite 事务内不再做异步加密（持锁降到微秒级）、
 `toRequest` 过滤 hop-by-hop 头、`kvList` 前缀剥离修正、失败记录与轮换标记加 TTL。
 
+**彻底移除 Edge 支持**：`edge-functions/` 业务层迁移为 `server/lib/` + `server/api/`（Node 单一入口），
+删除 EdgeOne KV 默认驱动（未注入 SQLite 驱动时 fail-closed 报错）、Edge 运行时能力位分支、
+JWT 的模块级 env 兜底，以及全部 Edge 专属测试与部署配置；包内不再保留任何 Edge/EdgeOne 代码路径。
+
 ---
 
 ## 快速开始（Docker）
@@ -126,8 +130,13 @@ npm run build    # 构建前端到 dist/
 npm test         # 跑存储/鉴权/服务/代理测试
 ```
 
-`server/` 为 Node 后端（`node:sqlite`，需 Node 22+），`edge-functions/` 为接口处理层，
-`src/` 为 Vue 3 前端。
+`server/` 为 Node 后端（`node:sqlite`，需 Node 22+），其中：
+- `server/index.js` HTTP 服务入口（Socket/TCP 双模式）
+- `server/router.js` 路由分派、`server/scheduler.js` 定时检测、`server/storage/sqlite.js` 存储驱动
+- `server/lib/` 业务基础库（config / auth / services / utils）
+- `server/api/` 各 API 端点处理函数
+
+`src/` 为 Vue 3 前端。**本项目只支持 Node/Docker 运行时**，不再包含 Edge/EdgeOne 相关代码。
 
 ---
 

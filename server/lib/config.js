@@ -65,7 +65,7 @@ function defaultConfig() {
     magicpush: { enabled: false, url: '', token: '' },
     custom: { enabled: false, url: '', method: 'POST', headers: '', body: '' },
     // 内置定时检测：仅自托管 Node 常驻进程可用（见 getCapabilities）。
-    // Edge 部署无守常住进程，该字段被保存但无人消费，无副作用。
+    // 无守宿进程的运行时会保存该字段但无消费者，无副作用。
     scheduler: { enabled: false, intervalMinutes: 30 },
   };
 }
@@ -100,15 +100,10 @@ function normalizeScheduler(input) {
  * @returns {{runtime: 'node'|'edge', scheduler: boolean}}
  */
 export function getCapabilities(env) {
-  const e = env || globalThis;
-  const isNode =
-    (e && (e.RUNTIME === 'node' || e.runtime === 'node')) ||
-    globalThis.RUNTIME === 'node';
-  return {
-    runtime: isNode ? 'node' : 'edge',
-    // 内置定时检测依赖常驻进程；Edge 部署需外部 Cron 触发 /api/check
-    scheduler: isNode,
-  };
+  // 本项目只支持自托管 Node/Docker 运行时：能力位恒为 node + scheduler。
+  // （非 Node 运行时路径已随 1.1.2 精简删除）
+  void env;
+  return { runtime: 'node', scheduler: true };
 }
 
 /**

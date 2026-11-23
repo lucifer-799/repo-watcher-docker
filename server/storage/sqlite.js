@@ -1,7 +1,7 @@
 /**
  * SQLite 存储驱动（node:sqlite，零依赖）
  *
- * 用单表 kv_store 1:1 复刻 EdgeOne KV 语义，供 edge-functions/lib/utils/kv.js 的
+ * 用单表 kv_store 1:1 实现 KV 语义，供 server/lib/utils/kv.js 的
  * setStorageDriver() 注入。驱动接收的 key 均已带 repo_watcher_ 前缀。
  *
  * ---- node:sqlite 版本约束（已核对官方文档 History 表）----

@@ -1,20 +1,20 @@
 /**
- * AES-256-GCM 加解密工具（Web Crypto 版，Edge Functions / Cloud Functions 通用）
+ * AES-256-GCM 加解密工具（基于 Web Crypto，Node 运行时通用）
  *
  * 用于加密 KV 中存储的敏感凭据（各平台 token、checkToken、magicpush 等）。
  * 密钥来源：受保护环境变量 CONFIG_ENC_KEY（仅服务端可用，不进 KV）。
  * 密文格式：enc::<iv>:<authTag>:<ciphertext>（base64）
  *
- * 注意：Edge Functions 运行在 V8 isolate，无 Node 的 `crypto` 模块与 `Buffer`，
+ * 注意：为避免依赖 Node 专属 API，本模块统一使用 Web Crypto 与 Uint8Array，
  * 因此使用 Web Crypto API（crypto.subtle）与原生 Uint8Array 实现。
  */
 
-// 统一获取全局 crypto（EdgeOne/Workers 中以 globalThis.crypto 暴露）
+// 统一获取全局 crypto（Node 18+ 通过 globalThis.crypto 提供 Web Crypto）
 const crypto = globalThis.crypto;
 
 const ALGORITHM = 'AES-GCM';
 
-// EdgeOne 普通环境变量（CONFIG_ENC_KEY 等）注入在 context.env，非全局变量。
+// 环境变量（CONFIG_ENC_KEY 等）可由调用方通过 env 传入，或以全局变量形式提供。
 // 由入口函数通过 initEnv(env) 注入，工具函数按需读取。
 let runtimeEnv = null;
 export function initEnv(env) {

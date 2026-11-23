@@ -7,7 +7,7 @@
  * 时才可信。一旦服务额外暴露 TCP 端口，攻击者可自行构造这些头直接提权为管理员。
  * 该不变量由 server/index.js 保证（只走 server.listen(socketPath)）。
  *
- * 本文件不新增任何 import，保持与 Edge 部署的兼容性。
+ * 本文件不新增任何 import（便于单元测试与跨运行时复用）。
  */
 
 /**
@@ -27,7 +27,7 @@ export function isTruthy(v) {
 
 /**
  * 判断当前运行环境是否为自托管 Node 常驻进程。
- * 仅当 RUNTIME=node 时才读取网关头，避免 Edge 部署误信客户端伪造的请求头。
+ * 仅当 RUNTIME=node 时才读取网关头，避免其他运行时误信客户端伪造的请求头。
  *
  * @param {Object} [env]
  * @returns {boolean}
@@ -40,7 +40,7 @@ export function isNodeRuntime(env) {
 
 /**
  * 从统一网关可信头解析当前主体。
- * 仅在自托管 Node 环境下有意义；Edge 部署恒返回「无主体」。
+ * 仅在自托管 Node 环境下有意义；其他运行时恒返回「无主体」。
  *
  * @param {Request} request
  * @param {Object} [env]

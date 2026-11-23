@@ -9,12 +9,12 @@
  *  - 自托管 Node 运行时（Docker 版）：服务端在启动时通过 setFetchClient 注入
  *    基于 node:http CONNECT 隧道的实现，从而真正支持 HTTP/HTTPS 代理
  *    （见 server/http-client.js）。这对于「国内访问 GitHub 不佳」等场景尤为关键。
- *  - EdgeOne 边缘运行时：无法出站代理（平台限制），默认实现忽略 proxyUrl 直连，
+ *  - 默认实现：若未注入自定义 fetch 客户端（server/index.js 会注入带代理的实现），
  *    并在首次遇到非空 proxyUrl 时打印一条警告（仅一次）。
  *
  * 注入式设计与存储驱动（setStorageDriver）保持一致：业务层不感知运行时差异。
  *
- * 注意：本文件不得引入 node: 内置模块，否则 EdgeOne 打包会失败
+ * 注意：本文件不引入 node: 内置模块（保持纯 Web API，便于测试）
  * （构建时由打包自检保证）。
  */
 
@@ -22,7 +22,7 @@ let fetchClient = defaultFetchClient;
 let warnedProxyUnsupported = false;
 
 /**
- * 默认实现：直连。EdgeOne 边缘运行时使用本实现。
+ * 默认实现：直连（未注入自定义客户端时使用）。
  * @param {string} url
  * @param {object} [init]
  * @param {string} [proxyUrl]
@@ -33,7 +33,7 @@ async function defaultFetchClient(url, init, proxyUrl) {
     if (!warnedProxyUnsupported) {
       warnedProxyUnsupported = true;
       console.warn(
-        '[http] 检测到已配置 HTTP 代理，但当前运行环境（EdgeOne 边缘运行时）不支持出站代理，' +
+        '[http] 检测到已配置 HTTP 代理，但未注入支持代理的 fetch 客户端，将直连（忽略代理），' +
         '已改为直连。如需为 GitHub 等平台配置代理，请改用自托管 Node 自托管部署。'
       );
     }

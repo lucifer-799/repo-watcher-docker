@@ -29,7 +29,7 @@ const PLATFORM_ADAPTERS = {
     buildLatest: (base, path) => `${base}/repos/${path}/releases/latest`,
     buildList: (base, path) => `${base}/repos/${path}/releases?per_page=1`,
     buildHeaders: (token) => ({
-      'User-Agent': 'GitHub-Repo-Watcher-EdgeOne-Makers',
+      'User-Agent': 'Repo-Watcher-Docker',
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     }),
     getToken: (config) => config?.github?.token,
@@ -39,7 +39,7 @@ const PLATFORM_ADAPTERS = {
   gitee: {
     buildLatest: (base, path) => `${base}/api/v5/repos/${path}/releases/latest`,
     buildList: (base, path) => `${base}/api/v5/repos/${path}/releases?per_page=1`,
-    buildHeaders: () => ({ 'User-Agent': 'Gitee-Repo-Watcher-EdgeOne-Makers' }),
+    buildHeaders: () => ({ 'User-Agent': 'Repo-Watcher-Docker' }),
     getToken: (config) => config?.gitee?.token,
     apiBase: () => 'https://gitee.com',
     repoUrl: (owner, repo) => `https://gitee.com/${owner}/${repo}`,
@@ -51,7 +51,7 @@ const PLATFORM_ADAPTERS = {
     buildLatest: (base, path) => `${base}/api/v4/projects/${path}/releases?per_page=1`,
     buildList: (base, path) => `${base}/api/v4/projects/${path}/releases?per_page=1`,
     buildHeaders: (token) => ({
-      'User-Agent': 'GitLab-Repo-Watcher-EdgeOne-Makers',
+      'User-Agent': 'Repo-Watcher-Docker',
       ...(token ? { 'PRIVATE-TOKEN': token } : {}),
     }),
     getToken: (config) => config?.gitlab?.token,
@@ -63,7 +63,7 @@ const PLATFORM_ADAPTERS = {
     buildLatest: (base, path) => `${base}/api/v5/repos/${path}/releases?per_page=1`,
     buildList: (base, path) => `${base}/api/v5/repos/${path}/releases?per_page=1`,
     buildHeaders: () => ({
-      'User-Agent': 'GitCode-Repo-Watcher-EdgeOne-Makers',
+      'User-Agent': 'Repo-Watcher-Docker',
     }),
     getToken: (config) => config?.gitcode?.token,
     apiBase: (config) => config?.gitcode?.apiBase || 'https://gitcode.com',

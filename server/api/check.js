@@ -68,7 +68,7 @@ function findRepoConfig(repos, repoInfo) {
 
 // 核心检测逻辑
 // 导出供自托管 Node 部署的内置调度器复用（server/scheduler.js）。
-// Edge 部署仍通过下方的 onRequestGet / onRequestPost 调用，行为不变。
+// 服务端通过下方的 onRequestGet / onRequestPost 调用（由 server/router.js 分派）。
 export async function performCheck(config, options = {}) {
   const { targetRepo, enableNotify = false, platform = 'all' } = options;
 
@@ -181,7 +181,7 @@ export async function performCheck(config, options = {}) {
 
 /**
  * 定长比较字符串（timing-safe）。
- * edge-functions 运行在 Edge/Workers，不能 import node:crypto，
+ * 此处不引入 node:crypto（保持纯 JS 实现，便于测试与跨环境复用），
  * 故用不提前 return 的逐字节异或比较，避免按前缀长度泄露匹配进度。
  */
 function timingSafeEqual(a, b) {
@@ -197,7 +197,7 @@ function timingSafeEqual(a, b) {
  * 令牌来源优先级：KV 配置 config.checkToken > 环境变量 CHECK_TOKEN
  */
 function verifyToken(request, config, url, env) {
-  // EdgeOne 普通环境变量注入在 context.env（CHECK_TOKEN）
+  // 访问令牌来源优先级：KV 配置 > context.env > globalThis
   const token = config.checkToken || (env && (env.CHECK_TOKEN || env.check_token)) || globalThis.CHECK_TOKEN || globalThis.check_token;
   if (!token) {
     // fail-closed 语义不变（无人可用），但对调用方按「未授权」而非「服务器错误」返回，

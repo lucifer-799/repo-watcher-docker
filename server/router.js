@@ -1,23 +1,23 @@
 /**
  * 路由表与方法分派
  *
- * 镜像 edge-functions/api 的文件系统路由，把 HTTP 请求分派给现有 handler。
- * handler 全部是 onRequest{Method}(context) 形式，与 EdgeOne 约定一致，
+ * 镜像 api/ 的文件系统路由，把 HTTP 请求分派给现有 handler。
+ * handler 全部是 onRequest{Method}(context) 形式（Web Fetch API 风格），
  * 因此这里只负责：路径归一化 -> 查表 -> 构造 context -> 调用。
  */
 
 const ROUTES = {
-  '/api/repos': () => import('../edge-functions/api/repos.js'),
-  '/api/check': () => import('../edge-functions/api/check.js'),
-  '/api/admin/init': () => import('../edge-functions/api/admin/init.js'),
-  '/api/admin/login': () => import('../edge-functions/api/admin/login.js'),
-  '/api/admin/refresh': () => import('../edge-functions/api/admin/refresh.js'),
-  '/api/admin/logout': () => import('../edge-functions/api/admin/logout.js'),
-  '/api/admin/password': () => import('../edge-functions/api/admin/password.js'),
-  '/api/admin/config': () => import('../edge-functions/api/admin/config.js'),
-  '/api/admin/session': () => import('../edge-functions/api/admin/session.js'),
-  '/api/admin/test-notify': () => import('../edge-functions/api/admin/test-notify.js'),
-  '/api/admin/check': () => import('../edge-functions/api/admin/check.js'),
+  '/api/repos': () => import('./api/repos.js'),
+  '/api/check': () => import('./api/check.js'),
+  '/api/admin/init': () => import('./api/admin/init.js'),
+  '/api/admin/login': () => import('./api/admin/login.js'),
+  '/api/admin/refresh': () => import('./api/admin/refresh.js'),
+  '/api/admin/logout': () => import('./api/admin/logout.js'),
+  '/api/admin/password': () => import('./api/admin/password.js'),
+  '/api/admin/config': () => import('./api/admin/config.js'),
+  '/api/admin/session': () => import('./api/admin/session.js'),
+  '/api/admin/test-notify': () => import('./api/admin/test-notify.js'),
+  '/api/admin/check': () => import('./api/admin/check.js'),
 };
 
 // 统一网关前缀。当前置网关转发时可能附带前缀，服务端自行归一化：
@@ -38,6 +38,20 @@ export function normalizePath(pathname) {
 }
 
 /**
+ * 应用版本（用于健康检查输出）。读取失败不影响功能。
+ */
+let APP_VERSION = '0.0.0';
+try {
+  const { readFileSync } = await import('node:fs');
+  const { join, dirname } = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+  APP_VERSION = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version || '0.0.0';
+} catch {
+  /* 忽略 */
+}
+
+/**
  * 分派请求到对应 handler。
  *
  * @param {Request} request 标准 Request 对象
@@ -51,6 +65,11 @@ export async function dispatch(request, env) {
   // 非 API 路径交由静态中间件处理
   if (!path.startsWith('/api/')) return null;
 
+  // 健康检查端点：Dockerfile/compose 的 HEALTHCHECK 依赖它（此前从未实现，容器会一直 unhealthy）
+  if (path === '/api/health') {
+    return json({ status: 'ok', uptime: Math.floor(process.uptime()), version: APP_VERSION });
+  }
+
   const loader = ROUTES[path];
   if (!loader) {
     return json({ code: 404, message: '接口不存在' }, 404);
@@ -59,7 +78,7 @@ export async function dispatch(request, env) {
   const mod = await loader();
   const method = request.method.toUpperCase();
 
-  // 按 onRequest{Method} -> onRequest 顺序查找，与 EdgeOne 约定一致
+  // 按 onRequest{Method} -> onRequest 顺序查找（Web Fetch API 风格）
   const named = `onRequest${method.charAt(0)}${method.slice(1).toLowerCase()}`;
   const handler = mod[named] || mod.onRequest;
 

@@ -9,8 +9,8 @@
  * 该接口未配置 token 会返回 500，而调度器是内部调用，无需也不应走 HTTP 鉴权。
  */
 
-import { getConfig, DEFAULT_INTERVAL_MINUTES } from '../edge-functions/lib/config.js';
-import { performCheck } from '../edge-functions/api/check.js';
+import { getConfig, DEFAULT_INTERVAL_MINUTES } from './lib/config.js';
+import { performCheck } from './api/check.js';
 
 // 心跳间隔。也是配置变更的最迟生效时间。
 const TICK_MS = 60 * 1000;

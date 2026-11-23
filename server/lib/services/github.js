@@ -14,7 +14,7 @@ export async function checkRepoUpdate(repoInfo, config) {
   // 构建 GitHub API 请求
   const apiUrl = `https://api.github.com/repos/${owner}/${repo}/commits/${branch}`;
   const requestHeaders = {
-    'User-Agent': 'GitHub-Repo-Watcher-EdgeOne-Makers',
+    'User-Agent': 'Repo-Watcher-Docker',
   };
 
   // 判断是否启用认证
@@ -109,7 +109,7 @@ export async function checkRepoUpdate(repoInfo, config) {
  */
 export async function getRateLimitInfo(config) {
   const requestHeaders = {
-    'User-Agent': 'GitHub-Repo-Watcher-EdgeOne-Makers',
+    'User-Agent': 'Repo-Watcher-Docker',
   };
 
   if (config?.github?.token) {

@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { createSqliteDriver } from './storage/sqlite.js';
 import { dispatch, normalizePath } from './router.js';
 import { startScheduler, stopScheduler } from './scheduler.js';
-import { isTruthy } from '../edge-functions/lib/auth/gateway.js';
+import { isTruthy } from './lib/auth/gateway.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
@@ -63,13 +63,13 @@ const MIME = {
 
 // 必须在导入任何业务模块之前完成注册：业务模块在模块求值期不会读存储，
 // 但 kv.js 的 activeDriver 是模块级状态，注册后所有后续导入共享同一实例。
-const { setStorageDriver } = await import('../edge-functions/lib/utils/kv.js');
+const { setStorageDriver } = await import('./lib/utils/kv.js');
 const driver = createSqliteDriver(DB_PATH);
 setStorageDriver(driver);
 
 // 注入 Node 运行时专用 HTTP 客户端（支持 HTTP/HTTPS 代理）。
-// 仅对配置了代理的平台生效；EdgeOne 边缘运行时不会走到这里，默认实现会直连。
-const { setFetchClient } = await import('../edge-functions/lib/utils/http.js');
+// 仅对配置了代理的平台生效；未配置代理时默认实现直连。
+const { setFetchClient } = await import('./lib/utils/http.js');
 const { createNodeFetchClient } = await import('./http-client.js');
 setFetchClient(createNodeFetchClient());
 

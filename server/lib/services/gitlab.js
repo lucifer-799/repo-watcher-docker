@@ -41,7 +41,7 @@ export async function checkGitLabRepoUpdate(repoInfo, config) {
   const encodedBranch = encodeURIComponent(branch);
   const apiUrl = `${apiBase}/api/v4/projects/${encodedPath}/repository/commits/${encodedBranch}`;
   const requestHeaders = {
-    'User-Agent': 'GitLab-Repo-Watcher-EdgeOne-Makers',
+    'User-Agent': 'Repo-Watcher-Docker',
   };
 
   // GitLab 使用 PRIVATE-TOKEN header 认证
@@ -137,7 +137,7 @@ export async function checkGitLabRepoUpdate(repoInfo, config) {
 export async function getGitLabRateLimitInfo(config) {
   const apiBase = config?.gitlab?.apiBase || 'https://gitlab.com';
   const requestHeaders = {
-    'User-Agent': 'GitLab-Repo-Watcher-EdgeOne-Makers',
+    'User-Agent': 'Repo-Watcher-Docker',
   };
 
   if (config?.gitlab?.token) {

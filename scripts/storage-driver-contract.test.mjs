@@ -1,12 +1,11 @@
 /**
  * 存储驱动契约测试
  *
- * 用同一套断言分别验证：
- *   1. 默认驱动（EdgeOne KV 全局变量，此处用内存 mock 注入 globalThis）
- *   2. 自定义驱动（setStorageDriver 注入，模拟自托管 SQLite 驱动）
+ * 用同一套断言验证「可注入门面」：
+ *   1. 内存模拟驱动（验证门面语义与分页/前缀等边界）
+ *   2. 真实 SQLite 驱动（server/storage/sqlite.js，node:sqlite）
  *
- * 目的：保证 kv.js 改造为「可注入门面」后，对外 8 个函数的签名与语义完全不变，
- * 且 Edge 与自托管两条路径行为一致。
+ * 说明：Edge/EdgeOne KV 默认驱动已随 1.1.2 精简删除，相关 mock 与契约不再适用。
  *
  * 运行：node scripts/storage-driver-contract.test.mjs
  */
@@ -34,7 +33,7 @@ function it(name, fn) {
     });
 }
 
-// ---- 内存 KV mock（模拟 EdgeOne KV 全局变量）----
+// ---- 内存 KV mock（模拟一个已注入的驱动，用于验证门面语义）----
 
 function createMockKV(initial = {}) {
   const store = new Map(Object.entries(initial));
@@ -221,16 +220,11 @@ async function runContractSuite(label, driver, kvModule) {
 
 console.log('存储驱动契约测试');
 
-const kvModule = await import('../edge-functions/lib/utils/kv.js');
+const kvModule = await import('../server/lib/utils/kv.js');
 
-// 1) 默认驱动：先注入 mock KV 全局变量，且不得调用 setStorageDriver
-const mockKV = createMockKV();
-globalThis.my_kv = mockKV;
-await runContractSuite('默认驱动 · EdgeOne KV', null, kvModule);
-
-// 2) 自定义驱动：注入模拟的本地驱动
+// 1) 内存模拟驱动（充当「已注入」的驱动，验证门面语义）
 const localDriver = createFakeLocalDriver();
-await runContractSuite('自定义驱动 · 本地（含 deletePrefix）', localDriver, kvModule);
+await runContractSuite('注入驱动 · 内存模拟（含 deletePrefix）', localDriver, kvModule);
 
 // 3) 真实 SQLite 驱动（node:sqlite 单表 kv_store）
 const { createSqliteDriver } = await import('../server/storage/sqlite.js');
@@ -334,7 +328,7 @@ await it('value 含 Unicode 与引号时往返无损', async () => {
 
 // ---- config.js：scheduler 字段与能力位 ----
 
-const cfg = await import('../edge-functions/lib/config.js');
+const cfg = await import('../server/lib/config.js');
 const NODE_ENV = { RUNTIME: 'node', CONFIG_ENC_KEY: 'a'.repeat(64) };
 
 console.log('\n[config.js · scheduler 与能力位]');
@@ -342,9 +336,9 @@ console.log('\n[config.js · scheduler 与能力位]');
 // 切换到干净的本地驱动，避免与上一轮用例数据互相干扰
 kvModule.setStorageDriver(createFakeLocalDriver());
 
-await it('未注入 RUNTIME 时判定为 edge，且不支持内置调度', async () => {
-  assert.deepEqual(cfg.getCapabilities(undefined), { runtime: 'edge', scheduler: false });
-  assert.deepEqual(cfg.getCapabilities({}), { runtime: 'edge', scheduler: false });
+await it('能力位恒为 node（Edge 支持已删除）', async () => {
+  assert.deepEqual(cfg.getCapabilities(undefined), { runtime: 'node', scheduler: true });
+  assert.deepEqual(cfg.getCapabilities({}), { runtime: 'node', scheduler: true });
 });
 
 await it('RUNTIME=node 时判定为 node，且支持内置调度', async () => {
