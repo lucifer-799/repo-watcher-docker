@@ -36,45 +36,40 @@ refresh 轮换、并发写保护、登录限流等），1.1.x 进一步收紧了
 
 ## 快速开始（Docker）
 
-**方式一：直接用公网镜像（推荐，无需克隆源码）**
+**无需本地构建**——直接拉取公网镜像（由 GitHub Actions 自动构建发布到 ghcr.io）。
+
+**方式 A：docker run（最简）**
 
 ```bash
+# 容器以非 root（uid 1000）运行，数据目录属主必须匹配，否则 SQLite 写不进
 mkdir -p ./data && sudo chown -R 1000:1000 ./data
-# 从仓库获取 compose.yaml，或仅用 docker run：
-docker run -d --name repo-watcher -p 8080:8080 \
+
+docker run -d --name repo-watcher \
+  -p 8080:8080 \
   -v "$PWD/data:/app/data" \
-  -e TRUST_GATEWAY_HEADERS=0 -e TRUST_PROXY_HEADERS=false \
-  --restart unless-stopped \
+  -e TZ=Asia/Shanghai \
+  -e TRUST_GATEWAY_HEADERS=0 \
   ghcr.io/lucifer-799/repo-watcher-docker:latest
 ```
 
-镜像由 GitHub Actions 自动构建并发布到 ghcr.io：推 `main` 会更新 `latest`，推 `v*` 标签会生成
-对应的版本标签（如 `1.1.3`、`1.1`）。`compose.yaml` 默认使用 `latest`（跟随最新发布）；
-如需可复现的固定版本，把镜像改为具体 tag（如 `:1.1.3`）或用 `REPO_WATCHER_TAG=1.1.3` 覆盖。
+打开 `http://<主机IP>:8080`，首次访问会引导创建管理员账号。
 
-**方式二：从源码本地构建**
+**方式 B：docker compose（推荐，配置可版本化）**
 
 ```bash
-# 1) 数据目录（容器以 uid 1000 运行，属主必须匹配，否则 SQLite 写不进）
 mkdir -p ./data && sudo chown -R 1000:1000 ./data
-
-# 2) 构建并启动
-docker compose up -d --build
-
-# 3) 打开 http://<宿主IP>:8080
-#    首次访问会引导创建管理员账号
+curl -fsSLO https://raw.githubusercontent.com/lucifer-799/repo-watcher-docker/main/compose.yaml
+docker compose up -d
 ```
 
-也可不用 compose：
+`compose.yaml` 的默认镜像为 `ghcr.io/lucifer-799/repo-watcher-docker:latest`。
 
-```bash
-docker build -t repo-watcher:1.1.3 .
-docker run -d --name repo-watcher -p 8080:8080 \
-  -v "$PWD/data:/app/data" \
-  -e TRUST_GATEWAY_HEADERS=0 \
-  -e TRUST_PROXY_HEADERS=false \
-  --restart unless-stopped repo-watcher:1.1.3
-```
+**关于镜像标签**：`:latest` 跟随最新发布（推 `main` 会更新 `latest`；推 `v*` 标签会生成
+`1.1.3`、`1.1` 这类版本标签）。需要可复现/稳定的固定版本时，把镜像改为具体 tag
+（如 `:1.1.3`），或用环境变量覆盖：`REPO_WATCHER_TAG=1.1.3 docker compose up -d`。
+
+**首次部署必看**：数据目录属主需为 `1000:1000`（容器以 `node` 用户运行）；
+健康检查端点为 `GET /api/health`；容器已内置 `HEALTHCHECK`。
 
 ### 环境变量
 
@@ -115,6 +110,27 @@ docker run -d --name repo-watcher -p 8080:8080 \
 
 ## 开发
 
+> 仅在你需要修改代码或自行构建镜像时才需要本节；普通部署请直接用上面的公网镜像。
+
+**从源码本地构建镜像**
+
+```bash
+mkdir -p ./data && sudo chown -R 1000:1000 ./data
+docker compose up -d --build          # 使用仓库内 compose.yaml（含 build 段）
+```
+
+或不用 compose：
+
+```bash
+docker build -t repo-watcher:1.1.3 .
+docker run -d --name repo-watcher -p 8080:8080 \
+  -v "$PWD/data:/app/data" \
+  -e TRUST_GATEWAY_HEADERS=0 \
+  --restart unless-stopped repo-watcher:1.1.3
+```
+
+**本地开发与测试**
+
 ```bash
 npm ci
 npm run dev      # 本地开发（vite）
@@ -138,6 +154,20 @@ npm run test:security   # 只跑安全回归（JWT 类型、fail-fast、匿名�
   匿名只读边界、写端点鉴权、init 并发、登录限流、refresh 轮换、原型污染防护、health、非 root）
 
 `src/` 为 Vue 3 前端。**本项目只支持 Node/Docker 运行时**，不再包含 Edge/EdgeOne 相关代码。
+
+---
+
+## 关于本项目
+
+本项目的工程流程采用「**智能体协作 + 人工决策**」的方式完成，作为项目本身的实践特色：
+
+- **需求决策与验收**由人工负责；
+- **代码重构与功能开发**由 AI 智能体完成；
+- **代码审查**采用自动化方式（OCR 提取 + 大语言模型评审）逐轮发现并修复问题；
+- **镜像构建**由 Jenkins 流水线完成，**运行部署**通过 Docker 容器化方式交付。
+
+上述流程在自建的智能体协作平台上编排（Octop），AI 负责执行、人工负责判断与签署，
+二者边界清晰。此处仅描述方法论层面的分工，不涉及任何具体基础设施配置。
 
 ---
 
