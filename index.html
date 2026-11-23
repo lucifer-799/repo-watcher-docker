@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <link rel="canonical" href="https://repowatcher.160621.xyz//" />
+  <!-- 基础 SEO -->
+  <title>仓库检测仪表盘 · Repo Watcher - 多平台仓库更新监控</title>
+  <meta name="description"
+    content="Repo Watcher 是基于 EdgeOne Makers 边缘函数的多平台仓库更新监控工具，支持 GitHub、Gitee、GitLab、GitCode 与 CNB 的代码提交检测、定时巡检、消息推送与可视化仪表盘。" />
+  <meta name="keywords"
+    content="仓库监控,仓库更新监控,GitHub 监控,Gitee 监控,GitLab 监控,CNB 云原生构建,commit 监控,代码提交提醒,定时检测,EdgeOne Makers,Repo Watcher" />
+  <meta name="author" content="MagicCode" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta name="googlebot" content="index, follow" />
+  <meta name="application-name" content="Repo Watcher" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f8fafc">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#020617">
+
+  <!-- 站点图标 -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="mask-icon" href="/favicon.svg" color="#2563eb" />
+
+  <!-- 主题色：与 style.css 中浅色/深色背景保持一致 -->
+  <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#020617" media="(prefers-color-scheme: dark)" />
+  <meta name="color-scheme" content="light dark" />
+
+  <!-- PWA / 移动端 -->
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Repo Watcher" />
+
+  <!-- Open Graph（微信 / QQ / Facebook / LinkedIn 分享卡片） -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Repo Watcher" />
+  <meta property="og:locale" content="zh_CN" />
+  <meta property="og:title" content="仓库检测仪表盘 · Repo Watcher - 多平台仓库更新监控" />
+  <meta property="og:description"
+    content="基于 EdgeOne Makers 边缘函数的多平台仓库更新监控工具，支持 GitHub、Gitee、GitLab、GitCode 与 CNB 的代码提交检测、定时巡检与消息推送。" />
+  <meta property="og:url" content="https://repowatcher.160621.xyz//" />
+  <meta property="og:image" content="https://repowatcher.160621.xyz//light.png" />
+  <meta property="og:image:secure_url" content="https://repowatcher.160621.xyz//light.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="2198" />
+  <meta property="og:image:height" content="1246" />
+  <meta property="og:image:alt" content="Repo Watcher 仓库检测仪表盘界面预览" />
+
+  <!-- Twitter / X 分享卡片 -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="仓库检测仪表盘 · Repo Watcher - 多平台仓库更新监控" />
+  <meta name="twitter:description"
+    content="基于 EdgeOne Makers 边缘函数的多平台仓库更新监控工具，支持 GitHub、Gitee、GitLab、GitCode 与 CNB 的代码提交检测、定时巡检与消息推送。" />
+  <meta name="twitter:image" content="https://repowatcher.160621.xyz//light.png" />
+  <meta name="twitter:image:alt" content="Repo Watcher 仓库检测仪表盘界面预览" />
+
+  <!-- 字体：使用 Outfit 替代 Inter，更有个性且更贴合技术工具定位 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- 结构化数据：帮助搜索引擎理解站点用途 -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Repo Watcher",
+      "alternateName": "仓库检测仪表盘",
+      "description": "基于 EdgeOne Makers 边缘函数的多平台仓库更新监控工具，支持 GitHub、Gitee、GitLab、GitCode 与 CNB 的代码提交检测、定时巡检与消息推送。",
+      "url": "https://repowatcher.160621.xyz//",
+      "applicationCategory": "DeveloperApplication",
+      "applicationSubCategory": "代码仓库监控",
+      "operatingSystem": "Web Browser",
+      "browserRequirements": "Requires JavaScript",
+      "inLanguage": "zh-CN",
+      "isAccessibleForFree": true,
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "CNY"
+      },
+      "featureList": [
+        "同时监控 GitHub、Gitee、GitLab、GitCode、CNB 仓库提交",
+        "定时检测与手动触发检测",
+        "最新 commit 实时展示",
+        "MagicPush 消息推送通知",
+        "Token 认证提升 API 限流配额",
+        "可视化仪表盘与公开 API"
+      ],
+      "screenshot": "https://repowatcher.160621.xyz//light.png",
+      "author": {
+        "@type": "Person",
+        "name": "MagicCode"
+      },
+      "codeRepository": "https://github.com/magiccode1412/repo-watcher",
+      "license": "https://opensource.org/licenses/MIT"
+    }
+  </script>
+</head>
+
+<body>
+  <div id="app">
+    <!-- 首屏占位：JS 加载前避免白屏，同时为爬虫提供可索引内容 -->
+    <div style="max-width: 1152px; margin: 0 auto; padding: 32px 16px;">
+      <h1 style="font-size: 30px; font-weight: 700; margin: 0 0 8px;">仓库检测仪表盘</h1>
+      <p style="color: #64748b; margin: 0 0 16px;">实时监控 GitHub、Gitee、GitLab、GitCode 和 CNB 仓库状态</p>
+      <p style="color: #94a3b8; font-size: 14px;">正在加载仓库数据…</p>
+    </div>
+  </div>
+
+  <noscript>
+    <div style="max-width: 1152px; margin: 0 auto; padding: 32px 16px; line-height: 1.8;">
+      <h1>仓库检测仪表盘 · Repo Watcher</h1>
+      <p>
+        Repo Watcher 是基于 EdgeOne Makers 边缘函数的多平台仓库更新监控工具，支持
+        GitHub、Gitee、GitLab、GitCode 与 CNB 的代码提交检测、定时巡检、消息推送与可视化仪表盘。
+      </p>
+      <p>本页为单页应用，需要启用 JavaScript 才能查看实时数据。你也可以直接调用公开接口 <code>GET /api/repos</code> 获取仓库状态。</p>
+      <p>
+        项目地址：
+        <a href="https://github.com/magiccode1412/repo-watcher">GitHub</a> ·
+        <a href="https://cnb.cool/magiccode1412/repo-watcher">CNB 云原生构建</a>
+      </p>
+    </div>
+  </noscript>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>

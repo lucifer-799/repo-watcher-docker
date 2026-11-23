@@ -1,0 +1,40 @@
+# compose.yaml —— Repo Watcher（Docker 版）
+#
+# 基于 MagicCode 的 Repo Watcher 二次开发，由飞牛 fpk 进程型改造为 TCP 常驻容器。
+# 启动前请先准备数据目录：mkdir -p ./data && chown -R 1000:1000 ./data
+# （容器以非 root 的 node 用户 uid=1000 运行，目录属主不匹配会导致 SQLite 无法写入）
+services:
+  repo-watcher:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: repo-watcher:1.1.0
+    container_name: repo-watcher
+    restart: unless-stopped
+    # 宿主端口可用 HOST_PORT 环境变量覆盖，默认 8080
+    ports:
+      - "${HOST_PORT:-8080}:8080"
+    environment:
+      - TZ=Asia/Shanghai
+      - NODE_ENV=production
+      - PORT=8080
+      - HOST=0.0.0.0
+      # SQLite 数据库落盘位置（对应 ./data 卷）
+      - DB_PATH=/app/data/repo-watcher.db
+      # 构建产物静态目录（Dockerfile 内已把 dist/ 拷入 /app/www）
+      - WWW_DIR=/app/www
+      # 凭据加密密钥与 JWT 签名密钥：生产环境请自行生成并妥善保管，
+      # 未提供时服务端首次启动会生成到 etc/app.env（勿提交到版本库）
+      # - CONFIG_ENC_KEY=<32+ 字节随机串>
+      # - JWT_SECRET=<32+ 字节随机串>
+      # ⚠️ 安全：TCP 模式必须为 0。为 1 时服务会直接拒绝启动（防伪造网关注入管理员身份）
+      - TRUST_GATEWAY_HEADERS=0
+    volumes:
+      # 数据卷：SQLite 库文件持久化（迁移时把既有 repo-watcher.db 拷入）
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s

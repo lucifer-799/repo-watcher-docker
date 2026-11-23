@@ -1,0 +1,24 @@
+# .dockerignore —— 排除构建无关/体积大/敏感的内容
+.git
+.gitignore
+node_modules
+dist
+www
+data
+.fnos
+.cnb
+.cnb.yml
+.codebuddy
+edgeone.json
+*.log
+*.md
+!README.md
+.vscode
+.idea
+temp
+tmp
+scripts/*.test.mjs
+Dockerfile
+.dockerignore
+compose.yaml
+Jenkinsfile

@@ -1,0 +1,24 @@
+node_modules
+.pnpm-store
+dist
+.Trash-0
+
+# Tencent Cloud EdgeOne
+.env
+.edgeone/*
+.tef_dist/*
+  
+# docker 版运行时数据（SQLite / socket）——不入库，见 data/README.md
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+data/app.sock
+
+# 运行时生成的凭据密钥（CONFIG_ENC_KEY / JWT_SECRET）——绝不入库
+etc/app.env
+etc/*.env
+
+# 本地环境变量覆盖
+.env.local
+.env.*.local
