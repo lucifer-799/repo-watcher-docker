@@ -8,6 +8,16 @@
 本项目是 **Repo Watcher**（原作者 MagicCode，MIT 许可）的 Docker 版衍生作品，
 来源与修改说明见 [NOTICE](./NOTICE)，许可条款见 [LICENSE](./LICENSE)。
 
+## [1.1.4] - 2026-11-23
+
+### Changed
+- `compose.yaml` 改为**极简最小部署模板**：镜像直接写死 `ghcr.io/lucifer-799/repo-watcher-docker:latest`，
+  去掉 `${REPO_WATCHER_TAG}` / `${HOST_PORT}` / `${TZ}` / `${TRUST_PROXY_HEADERS}` 等变量插值
+  （普通用户无需理解变量）；只保留最小必需项（端口 8080、数据卷 `./data`、`TZ`、`TRUST_GATEWAY_HEADERS=0`、健康检查）。
+- 本地构建场景拆分到新的 `compose.build.yaml`（含 `build:` 段），主 `compose.yaml` 不再包含 build 段；
+  README 的「从源码本地构建」改用 `docker compose -f compose.build.yaml up -d --build`。
+- README 快速开始与标签说明同步：示例直写 `:latest`，固定版本改为直接改镜像 tag（如 `:1.1.4`）。
+
 ## [1.1.3] - 2026-11-23
 
 ### Added
@@ -128,6 +138,7 @@
 - 提供 `compose.yaml` 与可配置的宿主端口、环境变量（`HOST` / `DB_PATH` / `WWW_DIR` 等）。
 - 前端构建产物由镜像内 `npm run build` 生成（Vite + 单文件打包 + PWA）。
 
+[1.1.4]: #114---2026-11-23
 [1.1.3]: #113---2026-11-23
 [1.1.2]: #112---2026-11-23
 [1.1.1]: #111---2026-11-23

@@ -62,11 +62,10 @@ curl -fsSLO https://raw.githubusercontent.com/lucifer-799/repo-watcher-docker/ma
 docker compose up -d
 ```
 
-`compose.yaml` 的默认镜像为 `ghcr.io/lucifer-799/repo-watcher-docker:latest`。
+`compose.yaml` 直接使用 `ghcr.io/lucifer-799/repo-watcher-docker:latest`，无需改任何变量。
 
-**关于镜像标签**：`:latest` 跟随最新发布（推 `main` 会更新 `latest`；推 `v*` 标签会生成
-`1.1.3`、`1.1` 这类版本标签）。需要可复现/稳定的固定版本时，把镜像改为具体 tag
-（如 `:1.1.3`），或用环境变量覆盖：`REPO_WATCHER_TAG=1.1.3 docker compose up -d`。
+**关于镜像标签**：`latest` 跟随最新发布。需要可复现/稳定的固定版本时，把 `compose.yaml` 里的
+镜像直接改成具体版本即可（如 `ghcr.io/lucifer-799/repo-watcher-docker:1.1.4`）。
 
 **首次部署必看**：数据目录属主需为 `1000:1000`（容器以 `node` 用户运行）；
 健康检查端点为 `GET /api/health`；容器已内置 `HEALTHCHECK`。
@@ -116,17 +115,17 @@ docker compose up -d
 
 ```bash
 mkdir -p ./data && sudo chown -R 1000:1000 ./data
-docker compose up -d --build          # 使用仓库内 compose.yaml（含 build 段）
+docker compose -f compose.build.yaml up -d --build   # 从源码构建（含 build 段）
 ```
 
 或不用 compose：
 
 ```bash
-docker build -t repo-watcher:1.1.3 .
+docker build -t repo-watcher:1.1.4 .
 docker run -d --name repo-watcher -p 8080:8080 \
   -v "$PWD/data:/app/data" \
   -e TRUST_GATEWAY_HEADERS=0 \
-  --restart unless-stopped repo-watcher:1.1.3
+  --restart unless-stopped repo-watcher:1.1.4
 ```
 
 **本地开发与测试**

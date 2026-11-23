@@ -24,4 +24,5 @@ test
 Dockerfile
 .dockerignore
 compose.yaml
+compose.build.yaml
 Jenkinsfile

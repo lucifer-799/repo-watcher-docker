@@ -1,0 +1,29 @@
+# compose.build.yaml —— 从源码本地构建镜像（开发用，普通部署请用 compose.yaml）
+#
+# 用法：
+#   mkdir -p ./data && sudo chown -R 1000:1000 ./data
+#   docker compose -f compose.build.yaml up -d --build
+#
+# 说明：本文件带 build 段，会用当前源码构建镜像；主 compose.yaml 只拉公网镜像，不含 build。
+services:
+  repo-watcher:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # 本地构建出的镜像打本地 tag（不推送）；如需与公网镜像同名可自行改
+    image: repo-watcher:local
+    container_name: repo-watcher
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - TZ=Asia/Shanghai
+      - TRUST_GATEWAY_HEADERS=0
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
