@@ -1,6 +1,0 @@
-branch:
-  - reg: ^main
-    buttons:
-      - name: 部署
-        description: 触发部署
-        event: web_trigger_deploy

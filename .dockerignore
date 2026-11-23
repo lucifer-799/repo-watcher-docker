@@ -5,10 +5,8 @@ node_modules
 dist
 www
 data
-.fnos
-.cnb
-.cnb.yml
 .codebuddy
+skills-lock.json
 edgeone.json
 *.log
 *.md
