@@ -21,42 +21,16 @@
 | 访问路径 | `/app/repowatcher/` 前缀 | 固定 `/`（不再支持前缀构建） |
 | 未登录访问 | 全部需登录 | **仪表盘只读开放**（仓库列表/状态/统计可见）；管理后台与写操作仍需登录 |
 | 运行身份 | 平台用户 | **非 root**（容器内 `node`，uid=1000） |
-| 安全加固 | — | v1.0.2 起持续加固，见下 |
+| 安全加固 | — | 1.0.2 起持续加固（详见 [CHANGELOG](./CHANGELOG.md)） |
 | fpk 资产 | `fnos/`、`build:fnos`、fnpk 流水线 | **已移除** |
 
 ### 版本与安全加固
 
-- JWT 校验令牌类型（refresh token 不可当 access token 用）
-- 通知模板渲染防原型污染（拒绝 `__proto__`/`constructor`/`prototype` 路径）
-- 管理员初始化原子化（CAS），并发下不会被覆盖
-- 容器非 root 运行
-- 多值 `Set-Cookie` 逐条写出
-- refresh token 一次性轮换
-- 配置/仓库数据写入走事务内「读-改-写」，消除并发丢更新
-- 登录失败限流（5 次后指数退避，上限 15 分钟）
-- PBKDF2 迭代提升至 60 万（旧哈希仍可正常验证，改密后自动升级）
-- 匿名响应隐藏内部错误详情（`lastCheckError` 等）
+本项目自 1.0.2 起持续进行安全加固（令牌类型校验、初始化原子化、非 root 运行、
+refresh 轮换、并发写保护、登录限流等），1.1.x 进一步收紧了启动守卫与代理信任边界、
+并移除了全部 Edge/EdgeOne 相关代码。
 
-**v1.1.0**：整理为可对外发布的形态 —— 移除全部 fpk 资产，重写 README（含来源声明）与
-`NOTICE`，内部地址/CI 配置占位化，新增 `.env.example`；并以全新历史发布（旧开发历史已归档）。
-
-**v1.1.1**：修复代码评审发现的 1 项 critical 与 3 项 high ——
-①`TRUST_GATEWAY_HEADERS` 启动 fail-fast 与运行时判定统一口径（TCP 暴露 + 信任网关头 → 直接拒绝启动）；
-②登录限流取客户端 IP 改用 `x-real-ip`/XFF 最右一跳（不再信任可伪造的最左值）；
-③JWT 的 env 改为显式传参（消除模块级共享状态在并发下的交叉污染）；
-④refresh 轮换改为「先建新会话、成功后再消费旧令牌」，失败不丢会话。另清理 EdgeOne 残留脚本/关键词。
-
-**v1.1.2**：修复复审提出的 critical 与 high ——
-①启动守卫改用与网关解析**同一个合并 env**（含 `app.env`），堵住「只往 app.env 写 TRUST_GATEWAY_HEADERS=1 即可绕过」的提权路径；
-②`refresh` 末尾吊销旧会话失败不再抛 500（轮换标记已担保一次性，删失败可容忍），避免用户被锁出；
-③登录限流新增 `TRUST_PROXY_HEADERS` 开关：**默认 false 用 TCP 真实对端地址**（伪造 XFF/x-real-ip 无效），仅在反代之后设为 true；
-④`getConfig` 改深合并（provider 子对象不再整块覆盖默认值）、敏感字段可显式清空、GitLab 分支名 URL 编码、
-代理认证头不再泄漏进 CONNECT 隧道、SQLite 事务内不再做异步加密（持锁降到微秒级）、
-`toRequest` 过滤 hop-by-hop 头、`kvList` 前缀剥离修正、失败记录与轮换标记加 TTL。
-
-**彻底移除 Edge 支持**：`edge-functions/` 业务层迁移为 `server/lib/` + `server/api/`（Node 单一入口），
-删除 EdgeOne KV 默认驱动（未注入 SQLite 驱动时 fail-closed 报错）、Edge 运行时能力位分支、
-JWT 的模块级 env 兜底，以及全部 Edge 专属测试与部署配置；包内不再保留任何 Edge/EdgeOne 代码路径。
+> **完整版本变更记录见 [CHANGELOG.md](./CHANGELOG.md)**
 
 ---
 
