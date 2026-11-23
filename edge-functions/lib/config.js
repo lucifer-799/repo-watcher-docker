@@ -6,7 +6,7 @@
  * - getMaskedConfig()：返回脱敏后的配置（敏感字段用掩码），供管理后台展示
  */
 
-import { kvGetJSON, kvPutJSON, kvUpdate } from './utils/kv.js';
+import { kvGetJSON, kvPutJSON, kvUpdate, kvGet } from './utils/kv.js';
 import { encryptField, decryptField, isEncrypted, initEnv as initCryptoEnv } from './utils/crypto.js';
 
 const CONFIG_KEY = 'config';
@@ -24,6 +24,18 @@ const SENSITIVE_PATHS = [
   'custom.headers',
   'custom.body',
 ];
+
+/**
+ * 判断 input 是否**显式包含**某个点路径（用于区分「未提供」与「显式置空」）。
+ */
+function hasByPath(obj, path) {
+  let cur = obj;
+  for (const k of path.split('.')) {
+    if (cur == null || typeof cur !== 'object' || !Object.prototype.hasOwnProperty.call(cur, k)) return false;
+    cur = cur[k];
+  }
+  return true;
+}
 
 function getByPath(obj, path) {
   return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
@@ -106,7 +118,9 @@ export function getCapabilities(env) {
 export async function getConfig(env) {
   if (env) initCryptoEnv(env);
   const stored = await kvGetJSON(CONFIG_KEY);
-  const config = { ...defaultConfig(), ...(stored || {}) };
+  // 深合并：顶层浅合并会让 stored 中的 github/gitee/... 子对象**整体覆盖**默认值，
+  // 导致新版本新增的字段（如 includePrerelease/proxy）在既有数据上凭空消失。
+  const config = deepMerge(defaultConfig(), stored || {});
 
   for (const path of SENSITIVE_PATHS) {
     const val = getByPath(config, path);
@@ -124,9 +138,12 @@ export async function getConfig(env) {
  */
 export async function saveConfig(input, env) {
   if (env) initCryptoEnv(env);
-  // 原子读-改-写（CAS）：在同一事务内重新读取最新配置再合并写回，
-  // 避免两台机器/两个标签页同时保存时后写者覆盖前者（并发丢更新）。
-  return kvUpdate(CONFIG_KEY, async () => {
+  // 并发安全（1.1.2 调整）：**把异步工作（读、合并、加密）全部放在事务之外**，
+  // 事务内只做一次同步的「乐观锁写入」——比较写入前的原始快照是否仍然一致，
+  // 不一致说明期间被别人改过，则放弃本次写入（保留他人版本），避免丢更新；
+  // 一致则写入我们算好的结果。这样 sqlite 的 BEGIN IMMEDIATE 持锁时间降到微秒级，
+  // 不会因 await 异步加密而长时间霸占写锁（复审 high）。
+  const beforeRaw = await kvGet(CONFIG_KEY);
   const current = await getConfig(env);
   const merged = deepMerge(current, input || {});
 
@@ -143,8 +160,15 @@ export async function saveConfig(input, env) {
   // 加密敏感字段
   for (const path of SENSITIVE_PATHS) {
     const val = getByPath(merged, path);
+    // 显式传空（请求体里带了这个键且值为 ''/null）→ 视为「清空该凭据」；
+    // 未带该键 → 视为「不修改」，沿用已存储的值。此前两者混为一谈，导致凭据永远无法清除。
+    const explicitlyCleared = hasByPath(input || {}, path) && (val === '' || val == null);
+    if (explicitlyCleared) {
+      setByPath(merged, path, '');
+      continue;
+    }
     if (val === '' || val == null) {
-      // 空值表示不修改，保留原存储值：从已读 current 拷回
+      // 未提供：保留原存储值（已加密的沿用密文，未加密的补加密）
       const original = getByPath(current, path);
       if (original) {
         setByPath(merged, path, isEncrypted(original) ? original : await encryptField(original));
@@ -158,8 +182,11 @@ export async function saveConfig(input, env) {
     }
   }
 
-  // 事务内直接返回合并结果，由 kvUpdate 负责落库
-  return merged;
+  // 同步乐观锁：期间被他人改动则原样返回其版本（不改写），否则写入本次结果
+  return kvUpdate(CONFIG_KEY, (currentRaw) => {
+    const nowRaw = currentRaw === null || currentRaw === undefined ? null : JSON.stringify(currentRaw);
+    if (nowRaw !== beforeRaw) return currentRaw; // 冲突：保留他人版本
+    return merged;
   });
 }
 

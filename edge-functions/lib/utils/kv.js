@@ -187,17 +187,21 @@ export async function kvUpdate(key, updater) {
     if (raw === null || raw === undefined) return null;
     try { return typeof raw === 'string' ? JSON.parse(raw) : raw; } catch { return null; }
   };
+  // 值序列化：字符串视为「已是 JSON 文本」直接落库（供乐观锁场景原样回写他人版本），
+  // 其余类型按 JSON.stringify。避免之前把字符串再 stringify 一次导致双重编码。
+  const serialize = (v) => {
+    if (v === null || v === undefined) return null;
+    return typeof v === 'string' ? v : JSON.stringify(v);
+  };
+
   if (typeof driver.update === 'function') {
-    // 事务内「读-改-写」：updater 允许 async（例如配置项需要异步加密），
-    // 期间持写锁，不会与他人的并发写入交错。
-    return parse(await driver.update(full, async (raw) => {
-      const next = await updater(parse(raw));
-      return next === null || next === undefined ? null : JSON.stringify(next);
-    }));
+    // 事务内「读-改-写」：**updater 应保持同步且轻量**，避免长事务持锁
+    // （sqlite 驱动的 BEGIN IMMEDIATE 期间持写锁）。异步加密请在调用前完成。
+    return parse(await driver.update(full, (raw) => serialize(updater(parse(raw)))));
   }
   const current = parse(await driver.get(full));
   const next = await updater(current);
-  const str = next === null || next === undefined ? null : JSON.stringify(next);
+  const str = serialize(next);
   if (str === null) await driver.delete(full);
   else await driver.put(full, str);
   return next;
@@ -218,7 +222,12 @@ export async function kvList(prefix) {
   do {
     const result = await driver.list(full, cursor, 1000);
     for (const k of result.keys || []) {
-      out.push(k.name.startsWith(full) ? k.name.slice(full.length) : k.name);
+      // 只接受带本前缀的 key；否则带上前缀原样返回会让调用方再拼一次前缀
+      // （如 kvDelete(repo_watcher_xxx) → repo_watcher_repo_watcher_xxx），导致删不掉。
+      if (!k.name.startsWith(full)) continue;
+      const bare = k.name.slice(full.length);
+      if (!bare) continue; // 恰好等于前缀本身，跳过
+      out.push(bare);
     }
     cursor = result.cursor;
     // 驱动未返回 complete 字段时按「单页取完」处理，避免无限循环

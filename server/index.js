@@ -155,9 +155,22 @@ async function toRequest(req) {
   const host = req.headers.host || 'localhost';
   const url = `http://${host}${req.originalUrl || req.url}`;
 
+  // hop-by-hop 头只对单跳连接有意义，转发给应用层会造成误判/注入（如伪造 Keep-Alive、
+  // 用 Upgrade/Connection 影响下游）——按 RFC 7230 过滤，并连带过滤 Connection 里点名的头。
+  const HOP_BY_HOP = new Set([
+    'connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization',
+    'te', 'trailer', 'transfer-encoding', 'upgrade',
+  ]);
+  const connHeader = String(req.headers.connection || '');
+  const connListed = new Set(
+    connHeader.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
+  );
+
   const headers = new Headers();
   for (const [k, v] of Object.entries(req.headers)) {
     if (v === undefined) continue;
+    const kl = k.toLowerCase();
+    if (HOP_BY_HOP.has(kl) || connListed.has(kl)) continue;
     if (Array.isArray(v)) {
       for (const item of v) headers.append(k, item);
     } else {
@@ -168,11 +181,20 @@ async function toRequest(req) {
   const method = req.method || 'GET';
   const hasBody = !['GET', 'HEAD'].includes(method);
 
-  return new Request(url, {
+  const webRequest = new Request(url, {
     method,
     headers,
     body: hasBody && body ? body : undefined,
   });
+
+  // 把 TCP 连接的真实对端地址挂在 Request 上（非 HTTP 头，客户端无法伪造）。
+  // 供登录限流在「未启用受信代理」时按真实来源分桶。
+  try {
+    webRequest.__socketRemoteAddress = (req.socket && (req.socket.remoteAddress || req.socket.address?.().address)) || null;
+  } catch {
+    webRequest.__socketRemoteAddress = null;
+  }
+  return webRequest;
 }
 
 /**
@@ -298,10 +320,14 @@ server.on('error', (err) => {
 if (PORT) {
   // 加固：TCP 模式对外暴露端口，此时若同时信任网关身份头，任何人直连即可伪造管理员身份。
   // 故拒绝启动，强制运维二者只选其一。
-  if (isTruthy(process.env.TRUST_GATEWAY_HEADERS)) {
+  // ⚠️ 必须检查**合并后的 env**（含 app.env 的 fileEnv），而不是只看 process.env：
+  // getGatewayPrincipal 读的是同一个合并 env，若守卫只查 process.env，
+  // 运维往 app.env 写 TRUST_GATEWAY_HEADERS=1（不改 process.env）就能绕过守卫，
+  // 而 gateway 仍会信任伪造的 X-Trim-Isadmin 头 → TCP 暴露下提权。
+  if (isTruthy(env.TRUST_GATEWAY_HEADERS)) {
     console.error(
       '[server] 拒绝启动：检测到 PORT（对外 TCP 监听）且 TRUST_GATEWAY_HEADERS 为真值(' +
-      process.env.TRUST_GATEWAY_HEADERS + ')。' +
+      env.TRUST_GATEWAY_HEADERS + '，来源：process.env 或 app.env)。' +
       'TCP 暴露时必须关闭网关身份头信任，否则任何人可伪造 X-Trim-Isadmin 头提权为管理员。' +
       '请将 TRUST_GATEWAY_HEADERS 设为 0（或删除该变量）后重启。'
     );

@@ -46,6 +46,14 @@
 ③JWT 的 env 改为显式传参（消除模块级共享状态在并发下的交叉污染）；
 ④refresh 轮换改为「先建新会话、成功后再消费旧令牌」，失败不丢会话。另清理 EdgeOne 残留脚本/关键词。
 
+**v1.1.2**：修复复审提出的 critical 与 high ——
+①启动守卫改用与网关解析**同一个合并 env**（含 `app.env`），堵住「只往 app.env 写 TRUST_GATEWAY_HEADERS=1 即可绕过」的提权路径；
+②`refresh` 末尾吊销旧会话失败不再抛 500（轮换标记已担保一次性，删失败可容忍），避免用户被锁出；
+③登录限流新增 `TRUST_PROXY_HEADERS` 开关：**默认 false 用 TCP 真实对端地址**（伪造 XFF/x-real-ip 无效），仅在反代之后设为 true；
+④`getConfig` 改深合并（provider 子对象不再整块覆盖默认值）、敏感字段可显式清空、GitLab 分支名 URL 编码、
+代理认证头不再泄漏进 CONNECT 隧道、SQLite 事务内不再做异步加密（持锁降到微秒级）、
+`toRequest` 过滤 hop-by-hop 头、`kvList` 前缀剥离修正、失败记录与轮换标记加 TTL。
+
 ---
 
 ## 快速开始（Docker）
@@ -64,11 +72,12 @@ docker compose up -d --build
 也可不用 compose：
 
 ```bash
-docker build -t repo-watcher:1.1.1 .
+docker build -t repo-watcher:1.1.2 .
 docker run -d --name repo-watcher -p 8080:8080 \
   -v "$PWD/data:/app/data" \
   -e TRUST_GATEWAY_HEADERS=0 \
-  --restart unless-stopped repo-watcher:1.1.1
+  -e TRUST_PROXY_HEADERS=false \
+  --restart unless-stopped repo-watcher:1.1.2
 ```
 
 ### 环境变量

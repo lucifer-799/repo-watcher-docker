@@ -71,13 +71,18 @@ async function requestOnce(targetUrl, method, headers, body, proxy) {
   const proxyPort = proxyUrl.port || (proxyUrl.protocol === 'https:' ? 443 : 80);
   const isHttpsProxy = proxyUrl.protocol === 'https:';
 
-  const reqHeaders = { ...headers };
-  // 不向代理泄漏 Host / Content-Length（由底层请求自行决定）
+  // 统一小写键，避免出 { Host: ... } 这类大小写变体绕过下面的删除
+  const reqHeaders = {};
+  for (const [k, v] of Object.entries(headers || {})) reqHeaders[k.toLowerCase()] = v;
+
+  // 不向代理请求泄漏 Host / Content-Length（由底层按目标自行决定）
   delete reqHeaders.host;
   delete reqHeaders['content-length'];
 
   const auth = proxyAuthHeader(proxyUrl);
-  if (auth) reqHeaders['proxy-authorization'] = auth;
+  // 代理认证头只在「HTTP 目标（经代理转发）」时附上；
+  // HTTPS 走 CONNECT 隧道时该头属于到代理的一跳，绝不能带进隧道内的目标请求（会泄漏给目标站）。
+  if (auth && !isHttpsTarget) reqHeaders['proxy-authorization'] = auth;
 
   return new Promise((resolve, reject) => {
     // HTTP 目标：直接请求代理，路径用绝对 URI，由代理转发到目标（无需 CONNECT）
@@ -100,10 +105,14 @@ async function requestOnce(targetUrl, method, headers, body, proxy) {
     // HTTPS 目标：先向代理发起 CONNECT 隧道，再于隧道上做 TLS 并发起请求
     const onConnectedSocket = (socket) => {
       const tlsSocket = tls.connect({ socket, servername: target.hostname }, () => {
+        // 隧道内的请求面向目标站：必须带正确的 Host（此前 createConnection 模式下未显式设置，
+        // 可能导致 Host 缺失或残留代理侧值），且绝不能再带 proxy-authorization。
+        const tunnelHeaders = { ...reqHeaders, host: target.host };
+        delete tunnelHeaders['proxy-authorization'];
         const req = https.request({
           method,
           path: target.pathname + target.search,
-          headers: reqHeaders,
+          headers: tunnelHeaders,
           createConnection: () => tlsSocket,
           agent: false,
           timeout: REQUEST_TIMEOUT,

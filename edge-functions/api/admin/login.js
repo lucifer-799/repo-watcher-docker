@@ -8,9 +8,11 @@ import { issueTokens } from '../../lib/auth/jwt.js';
 import { saveSession } from '../../lib/auth/admin.js';
 import { json } from '../../lib/auth/middleware.js';
 import { kvGetJSON, kvUpdate, kvDelete } from '../../lib/utils/kv.js';
+import { isTruthy } from '../../lib/auth/gateway.js';
 
 // 1.0.2：登录失败限流（KV 计数，跨请求生效；反代层再限流更彻底，两层可叠加）
 const MAX_FAILS = 5;              // 连续失败阈值
+const FAIL_TTL_MS = 7 * 24 * 3600_000; // 失败记录最长保留 7 天（防 key 无限累积）
 const BASE_LOCK_MS = 60_000;      // 首次锁定时长
 const MAX_LOCK_MS = 15 * 60_000;  // 锁定上限
 
@@ -29,25 +31,37 @@ const MAX_LOCK_MS = 15 * 60_000;  // 锁定上限
  * 注意：最彻底的防线在反向代理层（丢弃/覆盖客户端自带的 XFF、并设置 x-real-ip）。
  * 本函数保证「即使代理透传了客户端 XFF，也不会用可伪造的最左值分桶」。
  */
-function clientIp(request) {
+function clientIp(request, env) {
+  // 是否信任代理头：默认 false（安全）。仅在明确部署于可信反向代理之后时设为 true。
+  //   - false：使用 TCP 连接的真实对端地址（挂载在 request.__socketRemoteAddress，
+  //     不是 HTTP 头，客户端无法伪造）→ 伪造 XFF/x-real-ip 完全无效；
+  //   - true ：依次采用 x-real-ip（反代覆盖设置）> XFF 最右一跳 > unknown。
+  // 为什么默认不信任：x-real-ip 与 XFF 都是 HTTP 头，客户端可自带；
+  // 只有反代会覆盖/追加它们时才可信（NPM/Caddy/Nginx 的默认行为）。
+  const trustProxy = isTruthy(env && env.TRUST_PROXY_HEADERS) || isTruthy(globalThis.TRUST_PROXY_HEADERS);
+
+  if (!trustProxy) {
+    const socketIp = request && request.__socketRemoteAddress;
+    return socketIp || 'unknown';
+  }
+
   const realIp = (request.headers.get('x-real-ip') || '').trim();
   if (realIp) return realIp;
   const xff = (request.headers.get('x-forwarded-for') || '')
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
-  // 最右一跳 = 最近可信代理追加的值
   if (xff.length) return xff[xff.length - 1];
   return 'unknown';
 }
 
-function failKey(username, request) {
-  return `loginfail:${String(username).toLowerCase()}:${clientIp(request)}`;
+function failKey(username, request, env) {
+  return `loginfail:${String(username).toLowerCase()}:${clientIp(request, env)}`;
 }
 
 export async function onRequestPost(context) {
   try {
-    const { request } = context;
+    const { request, env } = context;
 
     let body;
     try {
@@ -60,9 +74,14 @@ export async function onRequestPost(context) {
     const password = body.password || '';
 
     // 限流检查：锁定未到期直接拒绝（不暴露账号是否存在）
-    const key = failKey(username, request);
-    const rec = await kvGetJSON(key).catch(() => null);
+    const key = failKey(username, request, env);
     const now = Date.now();
+    let rec = await kvGetJSON(key).catch(() => null);
+    // 过期记录视为不存在（并把垃圾 key 清掉，避免长期堆积）
+    if (rec && rec.exp && rec.exp < now) {
+      await kvDelete(key).catch(() => null);
+      rec = null;
+    }
     if (rec && rec.until && now < rec.until) {
       const waitSec = Math.ceil((rec.until - now) / 1000);
       return json({ code: 429, message: `尝试过于频繁，请 ${waitSec} 秒后再试` }, 429);
@@ -74,7 +93,8 @@ export async function onRequestPost(context) {
         const fails = ((cur && cur.fails) || 0) + 1;
         const over = Math.max(0, fails - MAX_FAILS);
         const lockMs = over > 0 ? Math.min(MAX_LOCK_MS, BASE_LOCK_MS * 2 ** (over - 1)) : 0;
-        return { fails, until: lockMs ? Date.now() + lockMs : 0 };
+        const t = Date.now();
+        return { fails, until: lockMs ? t + lockMs : 0, exp: t + FAIL_TTL_MS };
       }).catch(() => null);
       return json({ code: 401, message: '用户名或密码错误' }, 401);
     }

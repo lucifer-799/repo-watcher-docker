@@ -37,7 +37,9 @@ export async function checkGitLabRepoUpdate(repoInfo, config) {
   const encodedPath = encodeURIComponent(`${owner}/${repo}`);
 
   // 构建 GitLab API 请求
-  const apiUrl = `${apiBase}/api/v4/projects/${encodedPath}/repository/commits/${branch}`;
+    // 分支名必须编码：含 '/' 的分支（如 feature/x）否则会被当作路径分隔符，请求打错资源
+  const encodedBranch = encodeURIComponent(branch);
+  const apiUrl = `${apiBase}/api/v4/projects/${encodedPath}/repository/commits/${encodedBranch}`;
   const requestHeaders = {
     'User-Agent': 'GitLab-Repo-Watcher-EdgeOne-Makers',
   };

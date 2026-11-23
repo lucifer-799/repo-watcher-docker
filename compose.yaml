@@ -8,7 +8,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: repo-watcher:1.1.1
+    image: repo-watcher:1.1.2
     container_name: repo-watcher
     restart: unless-stopped
     # 宿主端口可用 HOST_PORT 环境变量覆盖，默认 8080
@@ -29,6 +29,11 @@ services:
       # - JWT_SECRET=<32+ 字节随机串>
       # ⚠️ 安全：TCP 模式必须为 0。为 1 时服务会直接拒绝启动（防伪造网关注入管理员身份）
       - TRUST_GATEWAY_HEADERS=0
+      # 是否信任反向代理头（x-real-ip / X-Forwarded-For）用于登录失败限流的分桶：
+      #   true  —— 部署在 NPM/Caddy/Nginx 之后（代理会覆盖 x-real-ip、追加 XFF），按代理给出的真实 IP 分桶；
+      #   false —— 端口直接对外、无反向代理（默认），此时按 TCP 连接的真实对端地址分桶，
+      #            客户端伪造 XFF/x-real-ip 一律无效。
+      - TRUST_PROXY_HEADERS=${TRUST_PROXY_HEADERS:-true}
     volumes:
       # 数据卷：SQLite 库文件持久化（迁移时把既有 repo-watcher.db 拷入）
       - ./data:/app/data
