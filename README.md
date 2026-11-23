@@ -1,8 +1,8 @@
-# Repo Watcher · Docker 版
+# Repo Watcher - Docker 版
 
 > **来源声明（请务必阅读）**
 >
-> 本项目基于 **Repo Watcher · 项目仓库更新监控**（原作者 **MagicCode**，上游地址
+> 本项目基于 **Repo Watcher - 项目仓库更新监控**（原作者 **MagicCode**，上游地址
 > <https://cnb.cool/magiccode1412/repo-watcher>，许可证 **MIT License**）二次开发，
 > 改造为 **Docker 容器版本**。**原项目版权归原作者 MagicCode**，本衍生作品同样以 MIT 许可发布，
 > 完整条款见仓库根目录 [`LICENSE`](./LICENSE)（必须随代码保留）。修改内容详见 [`NOTICE`](./NOTICE)。
@@ -86,7 +86,7 @@ docker compose up -d
 
 ### 数据卷
 
-- `./data` → `/app/data`：SQLite 数据库（配置、仓库数据、会话）全部在此。
+- `./data` -> `/app/data`：SQLite 数据库（配置、仓库数据、会话）全部在此。
   迁移时把既有 `repo-watcher.db` 拷入并保持属主 `1000:1000` 即可。
 - 凭据密钥文件默认在容器内 `etc/app.env`；如需持久化可另行挂载。
 
@@ -98,10 +98,10 @@ docker compose up -d
 
 ## 使用说明
 
-1. 首次打开页面 → 创建管理员账号（≥6 位密码）。
-2. 进入 **管理后台** → 选择平台标签（GitHub / Gitee / GitLab / GitCode / CNB）→ 添加仓库
+1. 首次打开页面 -> 创建管理员账号（>=6 位密码）。
+2. 进入 **管理后台** -> 选择平台标签（GitHub / Gitee / GitLab / GitCode / CNB）-> 添加仓库
    （格式 `owner/repo`，可选分支、备注）。
-3. 填���对应平台的访问令牌（可选，私有仓库需要）、通知配置（MagicPush 或自定义 webhook）。
+3. 填写对应平台的访问令牌（可选，私有仓库需要）、通知配置（MagicPush 或自定义 webhook）。
 4. 在「定时检测」中设置间隔与开关；也可手动触发检测。
 5. **未登录访客**打开首页只能查看仪表盘（仓库列表、最近提交/发布、检测状态），
    看不到管理后台菜单，也无法执行任何修改（后端接口同样返回 401）。
@@ -150,7 +150,7 @@ npm run test:security   # 只跑安全回归（JWT 类型、fail-fast、匿名�
 - `test/auth-mode.test.mjs` 鉴权模式与网关身份
 - `test/server-smoke.test.mjs` 服务端冒烟（静态/路由/持久化）
 - `test/http-proxy.test.mjs` HTTP 代理
-- `test/security.test.mjs` 安全回归（锁住 1.0.1→1.1.2 的修复：JWT 令牌类型、启动 fail-fast、
+- `test/security.test.mjs` 安全回归（锁住 1.0.1->1.1.2 的修复：JWT 令牌类型、启动 fail-fast、
   匿名只读边界、写端点鉴权、init 并发、登录限流、refresh 轮换、原型污染防护、health、非 root）
 
 `src/` 为 Vue 3 前端。**本项目只支持 Node/Docker 运行时**，不再包含 Edge/EdgeOne 相关代码。
