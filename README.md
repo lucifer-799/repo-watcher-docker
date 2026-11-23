@@ -172,5 +172,9 @@ npm run test:security   # 只跑安全回归（JWT 类型、fail-fast、匿名�
 
 ## 许可证
 
-[MIT License](./LICENSE) —— 原项目版权归原作者 **MagicCode**，
-本 Docker 版衍生作品的修改部分版权归本仓库维护者。再分发请保留 `LICENSE` 与 `NOTICE`。
+[MIT License](./LICENSE)
+
+- 原作 **Repo Watcher** © 2026 **MagicCode**（MIT）
+- Docker 版 © 2026 **lucifer-799**
+
+再分发请同时保留 `LICENSE` 与 `NOTICE`（内含两方版权与修改说明）。
