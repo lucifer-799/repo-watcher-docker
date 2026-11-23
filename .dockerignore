@@ -1,6 +1,7 @@
 # .dockerignore —— 排除构建无关/体积大/敏感的内容
 .git
 .gitignore
+.github
 node_modules
 dist
 www

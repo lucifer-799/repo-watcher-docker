@@ -36,6 +36,22 @@ refresh 轮换、并发写保护、登录限流等），1.1.x 进一步收紧了
 
 ## 快速开始（Docker）
 
+**方式一：直接用公网镜像（推荐，无需克隆源码）**
+
+```bash
+mkdir -p ./data && sudo chown -R 1000:1000 ./data
+# 从仓库获取 compose.yaml，或仅用 docker run：
+docker run -d --name repo-watcher -p 8080:8080 \
+  -v "$PWD/data:/app/data" \
+  -e TRUST_GATEWAY_HEADERS=0 -e TRUST_PROXY_HEADERS=false \
+  --restart unless-stopped \
+  ghcr.io/lucifer-799/repo-watcher-docker:1.1.3
+```
+
+镜像由 GitHub Actions 在推送 `v*` 标签时自动构建并发布到 ghcr.io。
+
+**方式二：从源码本地构建**
+
 ```bash
 # 1) 数据目录（容器以 uid 1000 运行，属主必须匹配，否则 SQLite 写不进）
 mkdir -p ./data && sudo chown -R 1000:1000 ./data
@@ -50,12 +66,12 @@ docker compose up -d --build
 也可不用 compose：
 
 ```bash
-docker build -t repo-watcher:1.1.2 .
+docker build -t repo-watcher:1.1.3 .
 docker run -d --name repo-watcher -p 8080:8080 \
   -v "$PWD/data:/app/data" \
   -e TRUST_GATEWAY_HEADERS=0 \
   -e TRUST_PROXY_HEADERS=false \
-  --restart unless-stopped repo-watcher:1.1.2
+  --restart unless-stopped repo-watcher:1.1.3
 ```
 
 ### 环境变量

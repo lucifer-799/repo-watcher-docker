@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 #
-# repo-watcher docker 版（v1.1.2）
+# repo-watcher docker 版（v1.1.3）
 # 源自上游 Repo Watcher（原作者 MagicCode，MIT）：由 fpk 进程型改造为 TCP 容器，路径 env 化。
 # 来源与修改说明见 NOTICE，许可条款见 LICENSE（再分发请保留）。
 # 无原生模块（SQLite 用 Node 内置 node:sqlite），故 slim 足够，无需 alpine/编译链。

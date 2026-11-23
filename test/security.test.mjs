@@ -19,11 +19,25 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import http from 'node:http';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
+import net from 'node:net';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = new URL('..', import.meta.url).pathname;
+
+/** 取一个当前空闲的 TCP 端口（避免与其它测试套件/残留进程的固定端口冲突） */
+function freePort() {
+  return new Promise((resolve, reject) => {
+    const srv = net.createServer();
+    srv.unref();
+    srv.on('error', reject);
+    srv.listen(0, '127.0.0.1', () => {
+      const { port } = srv.address();
+      srv.close(() => resolve(port));
+    });
+  });
+}
 
 let passed = 0;
 let failed = 0;
@@ -138,7 +152,7 @@ await it('构建产物 dist/index.html 存在（npm run build 已执行）', () 
 
 console.log('\n[4] 启动 fail-fast：PORT + 合并 env 中的 TRUST_GATEWAY_HEADERS');
 
-function runServerOnce(env, { socketOnly = false } = {}) {
+function runServerOnce(env, { socketOnly = false, port } = {}) {
   return new Promise((resolve) => {
     const tmp = mkdtempSync(join(tmpdir(), 'rw-sec-'));
     mkdirSync(join(tmp, 'data'), { recursive: true });
@@ -146,7 +160,7 @@ function runServerOnce(env, { socketOnly = false } = {}) {
     const child = spawn(process.execPath, [join(ROOT, 'server', 'index.js')], {
       env: {
         ...process.env,
-        ...(socketOnly ? { SOCKET_PATH: join(tmp, 'app.sock') } : { PORT: '18199', HOST: '127.0.0.1' }),
+        ...(socketOnly ? { SOCKET_PATH: join(tmp, 'app.sock') } : { PORT: String(port), HOST: '127.0.0.1' }),
         DB_PATH: join(tmp, 'data', 't.db'),
         WWW_DIR: join(ROOT, 'dist'),
         TRIM_PKGETC: join(tmp, 'etc'),
@@ -175,7 +189,7 @@ function writeEnvFile(dir, lines) {
 }
 
 await it('process.env 里 TRUST_GATEWAY_HEADERS=1 + PORT → exit 1', async () => {
-  const r = await runServerOnce({ TRUST_GATEWAY_HEADERS: '1' });
+  const r = await runServerOnce({ TRUST_GATEWAY_HEADERS: '1' }, { port: await freePort() });
   assert.equal(r.code, 1, `应 exit 1，实际 ${r.code}`);
   assert.match(r.out, /拒绝启动/, '缺少拒绝原因');
 });
@@ -193,7 +207,7 @@ await it('【绕过路径】仅写入 app.env（process.env 不设）+ PORT → 
     ]);
     // 关键：process.env 里**完全不出现**该变量（真实绕过场景），
     // 只让 app.env 携带 TRUST_GATEWAY_HEADERS=1
-    const childEnv = { ...process.env, PORT: '18200', HOST: '127.0.0.1',
+    const childEnv = { ...process.env, PORT: String(await freePort()), HOST: '127.0.0.1',
       DB_PATH: join(tmp, 'data', 't.db'), WWW_DIR: join(ROOT, 'dist'), TRIM_PKGETC: join(tmp, 'etc') };
     delete childEnv.TRUST_GATEWAY_HEADERS;
     const child = spawn(process.execPath, [join(ROOT, 'server', 'index.js')], {
@@ -218,7 +232,7 @@ await it('对照：TRUST_GATEWAY_HEADERS=0 + PORT → 能正常监听（不误�
   const child = spawn(process.execPath, [join(ROOT, 'server', 'index.js')], {
     env: {
       ...process.env,
-      PORT: '18201', HOST: '127.0.0.1',
+      PORT: String(await freePort()), HOST: '127.0.0.1',
       DB_PATH: join(tmp, 'data', 't.db'),
       WWW_DIR: join(ROOT, 'dist'),
       TRIM_PKGETC: join(tmp, 'etc'),
@@ -249,7 +263,7 @@ await it('对照：TRUST_GATEWAY_HEADERS=0 + PORT → 能正常监听（不误�
 
 const tmpSrv = mkdtempSync(join(tmpdir(), 'rw-sec-srv-'));
 let child;
-let PORT = 18210;
+const PORT = await freePort();
 
 console.log('\n[5] 服务级：匿名只读 / 写端点鉴权 / init 并发 / 限流 / refresh 轮换');
 

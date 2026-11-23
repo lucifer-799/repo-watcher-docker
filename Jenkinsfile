@@ -20,14 +20,14 @@ pipeline {
     }
 
     parameters {
-        string(name: 'VERSION', defaultValue: '1.1.2',
-               description: '镜像 tag 版本号（默认 1.1.2）')
+        string(name: 'VERSION', defaultValue: '1.1.3',
+               description: '镜像 tag 版本号（默认 1.1.3）')
     }
 
     environment {
         // 以下均为示例值，请替换为您的实际地址（或用 Jenkins 参数/凭据注入）
         GITEA_URL   = 'http://git.example.com:3000'
-        GITEA_REPO  = 'your-org/repo-watcher-docker'
+        GITEA_REPO  = 'lucifer-799/repo-watcher-docker'
         GIT_BRANCH  = 'main'
         REGISTRY    = 'registry.example.com'
         IMAGE_NAME  = 'repo-watcher'
@@ -62,7 +62,7 @@ pipeline {
                 sh '''
                     set -eu
                     cd src
-                    echo "构建 repo-watcher:${VERSION:-1.1.2}（node:22-slim，npm 走代理）"
+                    echo "构建 repo-watcher:${VERSION:-1.1.3}（node:22-slim，npm 走代理）"
                     DOCKER_BUILDKIT=0 docker build \
                       --build-arg HTTP_PROXY="$BUILD_PROXY" \
                       --build-arg HTTPS_PROXY="$BUILD_PROXY" \
@@ -70,7 +70,7 @@ pipeline {
                       --build-arg http_proxy="$BUILD_PROXY" \
                       --build-arg https_proxy="$BUILD_PROXY" \
                       --build-arg no_proxy="$NO_PROXY" \
-                      -t "${IMAGE_NAME}:${VERSION:-1.1.2}" \
+                      -t "${IMAGE_NAME}:${VERSION:-1.1.3}" \
                       -t "${IMAGE_NAME}:latest" \
                       .
                     docker images "${IMAGE_NAME}" --format '  {{.Repository}}:{{.Tag}} {{.Size}}'
@@ -87,12 +87,12 @@ pipeline {
                         sh '''
                             set -eu
                             echo "$REG_PASS" | docker login "$REGISTRY" -u "$REG_USER" --password-stdin
-                            docker tag "${IMAGE_NAME}:${VERSION:-1.1.2}" "${REGISTRY}/${IMAGE_NAME}:${VERSION:-1.1.2}"
+                            docker tag "${IMAGE_NAME}:${VERSION:-1.1.3}" "${REGISTRY}/${IMAGE_NAME}:${VERSION:-1.1.3}"
                             docker tag "${IMAGE_NAME}:latest"    "${REGISTRY}/${IMAGE_NAME}:latest"
-                            docker push "${REGISTRY}/${IMAGE_NAME}:${VERSION:-1.1.2}"
+                            docker push "${REGISTRY}/${IMAGE_NAME}:${VERSION:-1.1.3}"
                             docker push "${REGISTRY}/${IMAGE_NAME}:latest"
                             docker logout "$REGISTRY" || true
-                            echo "已推送 ${REGISTRY}/${IMAGE_NAME}:${VERSION:-1.1.2} 与 :latest"
+                            echo "已推送 ${REGISTRY}/${IMAGE_NAME}:${VERSION:-1.1.3} 与 :latest"
                         '''
                     }
                 }
@@ -102,7 +102,7 @@ pipeline {
 
     post {
         success {
-            echo "构建成功：${env.REGISTRY}/${env.IMAGE_NAME}:${env.VERSION ?: '1.1.2'}"
+            echo "构建成功：${env.REGISTRY}/${env.IMAGE_NAME}:${env.VERSION ?: '1.1.3'}"
         }
         failure {
             echo "构建失败：repo-watcher-docker"

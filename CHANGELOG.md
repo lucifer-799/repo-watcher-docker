@@ -8,6 +8,24 @@
 本项目是 **Repo Watcher**（原作者 MagicCode，MIT 许可）的 Docker 版衍生作品，
 来源与修改说明见 [NOTICE](./NOTICE)，许可条款见 [LICENSE](./LICENSE)。
 
+## [1.1.3] - 2026-11-23
+
+### Added
+- `compose.yaml` 改为面向外部用户的公网部署模板：镜像指向
+  `ghcr.io/lucifer-799/repo-watcher-docker`，版本可用 `REPO_WATCHER_VERSION` 覆盖
+  （默认固定版本，也可设为 `latest`）；含数据卷、端口、环境变量、健康检查与中文注释。
+- 新增 GitHub Actions 工作流 `.github/workflows/build.yml`：推送到 main、推送 `v*` 标签
+  或手动触发时，自动构建并推送镜像到 ghcr.io（由 `GITHUB_TOKEN` 登录，
+  标签由 metadata-action 派生：分支名、语义化版本、latest）。
+
+### Changed
+- 前端与文档中的「本项目」链接统一指向
+  <https://github.com/lucifer-799/repo-watcher-docker>（原为占位地址）；
+  上游原作者链接（MagicCode / 原仓库）保持不动。
+
+### Fixed
+- 无。
+
 ## [1.1.2] - 2026-11-23
 
 ### Security
@@ -110,6 +128,7 @@
 - 提供 `compose.yaml` 与可配置的宿主端口、环境变量（`HOST` / `DB_PATH` / `WWW_DIR` 等）。
 - 前端构建产物由镜像内 `npm run build` 生成（Vite + 单文件打包 + PWA）。
 
+[1.1.3]: #113---2026-11-23
 [1.1.2]: #112---2026-11-23
 [1.1.1]: #111---2026-11-23
 [1.1.0]: #110---2026-11-23
