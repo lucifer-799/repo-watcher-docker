@@ -1,0 +1,19 @@
+fix(1.1.6): 修复两个安全遗留（改密吊销旧会话 / 静态文件 symlink 逃逸）
+
+两项修复的补丁由 OpenCode（newapi-egress/OpenCode）经 Octop ACP 首次实战产出，
+人工 review 后应用（没有直接提交 AI 输出）。
+
+Security
+- server/lib/auth/admin.js changePassword()：写入新 hash 后调用 deleteAllSessions() 吊销
+  全部 session:<jti>，旧 access/refresh token 立即 401；吊销失败回滚密码哈希（fail-closed）。
+- server/index.js serveStatic()：新增 realpathSync——先解析 WWW_DIR 真实根，再解析待服务文件
+  真实路径，二次校验真实路径仍在真实根内，阻断 symlink 逃逸（如 www/x -> /etc/passwd）；
+  realpath 失败优雅 404。已导入 realpathSync。
+
+测试（+2，总 137 项）
+- test/security.test.mjs：改密后旧 access 与 refresh token 均 401。
+- test/server-smoke.test.mjs：WWW_DIR 内指向 /etc/passwd 的 symlink 访问返回 403。
+
+版本 1.1.6（package.json / lock / Jenkinsfile / README / CHANGELOG）。
+验证：npm ci + npm run build 通过；5 套测试 137 项全过（60+15+34+3+25）；
+Node --check 两处修改文件通过；git diff 仅涉及上述文件。未构建、未推 GitHub。

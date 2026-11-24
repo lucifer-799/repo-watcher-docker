@@ -8,6 +8,22 @@
 本项目是 **Repo Watcher**（原作者 MagicCode，MIT 许可）的 Docker 版衍生作品，
 来源与修改说明见 [NOTICE](./NOTICE)，许可条款见 [LICENSE](./LICENSE)。
 
+## [1.1.6] - 2026-11-24
+
+### Security
+- **改密后吊销所有旧会话**：`lib/auth/admin.js` 的 `changePassword()` 在写入新 hash 成功后调用
+  `deleteAllSessions()` 删除该用户全部 `session:<jti>`，使所有旧 access/refresh token 立即 401；
+  吊销失败则回滚密码哈希（fail-closed，不留「密码已改、旧 token 仍有效」窗口）。
+  此修复由 **OpenCode（newapi-egress/OpenCode）** 经 Octop ACP 首次实战产出补丁、人工 review 后应用。
+- **静态文件 symlink 逃逸防护**：`server/index.js` 的 `serveStatic()` 在词法 `normalize+startsWith`
+  校验之外，新增 `realpathSync` 解析 WWW_DIR 真实根与待服务文件真实路径，并二次校验真实路径
+  仍位于真实根内；`realpath` 失败优雅返回 404。阻断 `www/evil -> /etc/passwd` 类软链接逃逸。
+  补丁同样由 OpenCode 产出。
+
+### Added
+- 新增两条回归测试：`test/security.test.mjs` 断言「改密后旧 access/refresh token 均 401」；
+  `test/server-smoke.test.mjs` 断言「WWW_DIR 内指向 `/etc/passwd` 的 symlink 访问返回 403」。
+
 ## [1.1.5] - 2026-11-23
 
 ### Changed

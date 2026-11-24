@@ -121,7 +121,7 @@ docker compose -f compose.build.yaml up -d --build   # 从源码构建（含 bui
 或不用 compose：
 
 ```bash
-docker build -t repo-watcher:1.1.5 .
+docker build -t repo-watcher:1.1.6 .
 docker run -d --name repo-watcher -p 8080:8080 \
   -v "$PWD/data:/app/data" \
   -e TRUST_GATEWAY_HEADERS=0 \

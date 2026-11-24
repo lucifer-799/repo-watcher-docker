@@ -417,6 +417,45 @@ try {
     assert.equal(r2.status, 200, '新 refresh 不可用');
   });
 
+  // ---- 改密吊销旧会话（1.1.6 修复）----
+  await it('改密成功后旧 access/refresh token 立即 401（会话被吊销）', async () => {
+    // 登录拿一对新 token
+    const login = await call('/api/admin/login', {
+      method: 'POST',
+      headers: { 'X-Real-IP': '10.99.99.99' },
+      body: { username: 'admin', password: 'password123' },
+    });
+    assert.equal(login.status, 200, '前置登录失败');
+    const oldAccess = login.json.data.accessToken;
+    const oldRefresh = login.json.data.refreshToken;
+    // 改密（用刚登录的 access token）
+    const chg = await call('/api/admin/password', {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${oldAccess}` },
+      body: { oldPassword: 'password123', newPassword: 'newpass456' },
+    });
+    assert.equal(chg.status, 200, '改密应成功');
+    // 旧 access token 应立即失效
+    const cfg = await call('/api/admin/config', { headers: { Authorization: `Bearer ${oldAccess}` } });
+    assert.equal(cfg.status, 401, '改密后旧 access token 应 401');
+    // 旧 refresh token 也应失效
+    const ref = await call('/api/admin/refresh', {
+      method: 'POST', headers: { Authorization: `Bearer ${oldRefresh}` },
+    });
+    assert.equal(ref.status, 401, '改密后旧 refresh token 应 401');
+    // 改回原密码，避免影响后续用例
+    const login2 = await call('/api/admin/login', {
+      method: 'POST',
+      headers: { 'X-Real-IP': '10.99.99.99' },
+      body: { username: 'admin', password: 'newpass456' },
+    });
+    assert.equal(login2.status, 200, '新密码应能登录');
+    await call('/api/admin/password', {
+      method: 'PUT', headers: { Authorization: `Bearer ${login2.json.data.accessToken}` },
+      body: { oldPassword: 'newpass456', newPassword: 'password123' },
+    });
+  });
+
   // ---- 登录限流 + 伪造 XFF ----
   await it('连续失败登录 → 429（TRUST_PROXY_HEADERS=false 时伪造 XFF 最左值无效）', async () => {
     let got429 = false;

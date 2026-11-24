@@ -420,6 +420,24 @@ try {
     const data = await res.json();
     assert.equal(data.data.tz, 'UTC+9');
   });
+  // ---- 静态文件 symlink 逃逸（1.1.6 修复）----
+  await it('WWW_DIR 内 symlink 指向外部文件 → 403（realpath 边界校验）', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const { execSync } = await import('node:child_process');
+    // 在临时 WWW 目录建一个软链接，指向 /etc/passwd（外部文件）
+    const outside = '/etc/passwd';
+    const link = path.join(WWW, 'escape-link');
+    try { fs.unlinkSync(link); } catch { /* 不存在 */ }
+    fs.symlinkSync(outside, link);
+    try {
+      const res = await rawRequest('/escape-link');
+      assert.equal(res.status, 403, 'symlink 逃逸应被 403 拒绝（实际 ' + res.status + '）');
+    } finally {
+      try { fs.unlinkSync(link); } catch { /* ignore */ }
+    }
+  });
+
 } finally {
   child.kill('SIGTERM');
   await new Promise((r) => setTimeout(r, 500));

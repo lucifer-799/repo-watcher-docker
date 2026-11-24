@@ -16,7 +16,7 @@
  */
 
 import http from 'node:http';
-import { existsSync, statSync, createReadStream, rmSync, readFileSync } from 'node:fs';
+import { existsSync, statSync, createReadStream, rmSync, readFileSync, realpathSync } from 'node:fs';
 import { join, extname, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -247,10 +247,20 @@ async function serveStatic(pathname, raw) {
     return true;
   }
 
+  // 基准根也用 realpath 解析：WWW_DIR 自身若是符号链接，先取其真实路径作为边界。
+  let realRoot;
+  try {
+    realRoot = realpathSync(WWW_DIR);
+  } catch {
+    raw.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+    raw.end('静态资源目录解析失败');
+    return true;
+  }
+
   const hasExt = extname(pathname) !== '';
   const rel = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
 
-  // 路径穿越防护：规范化后必须仍位于 WWW_DIR 之内
+  // 词法校验（快速拒绝 ../ 之类）
   const candidate = normalize(join(WWW_DIR, rel));
   if (candidate !== WWW_DIR && !candidate.startsWith(WWW_DIR + sep)) {
     raw.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
@@ -259,23 +269,38 @@ async function serveStatic(pathname, raw) {
   }
 
   let filePath = candidate;
-  if (existsSync(filePath) && statSync(filePath).isFile()) {
-    // 正常命中
-  } else if (!hasExt && existsSync(join(WWW_DIR, 'index.html'))) {
+  if (!(existsSync(filePath) && statSync(filePath).isFile())) {
     // SPA fallback：/admin/console 等前端路由
-    filePath = join(WWW_DIR, 'index.html');
-  } else {
+    if (!hasExt && existsSync(join(WWW_DIR, 'index.html'))) {
+      filePath = join(WWW_DIR, 'index.html');
+    } else {
+      raw.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      raw.end('资源不存在');
+      return true;
+    }
+  }
+
+  // 关键：解析真实路径后再次校验边界，阻断软链接逃逸（www/x -> /etc 等）。
+  let resolved;
+  try {
+    resolved = realpathSync(filePath);
+  } catch {
     raw.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
     raw.end('资源不存在');
     return true;
   }
+  if (resolved !== realRoot && !resolved.startsWith(realRoot + sep)) {
+    raw.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+    raw.end('拒绝访问');
+    return true;
+  }
 
-  const type = MIME[extname(filePath).toLowerCase()] || 'application/octet-stream';
+  const type = MIME[extname(resolved).toLowerCase()] || 'application/octet-stream';
   raw.writeHead(200, { 'Content-Type': type });
-  await new Promise((resolve, reject) => {
-    const stream = createReadStream(filePath);
+  await new Promise((resolveStream, reject) => {
+    const stream = createReadStream(resolved);
     stream.on('error', reject);
-    stream.on('end', resolve);
+    stream.on('end', resolveStream);
     stream.pipe(raw);
   });
   return true;

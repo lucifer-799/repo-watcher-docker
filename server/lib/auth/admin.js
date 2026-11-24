@@ -139,4 +139,13 @@ export async function changePassword(oldPassword, newPassword) {
   }
   const hash = await hashPassword(newPassword);
   await kvPutJSON(ADMIN_KEY, { ...admin, hash, updatedAt: new Date().toISOString() });
+
+  // 改密后吊销该用户所有现有会话：requireAccess 会因 sessionExists 失败对所有旧 token 返回 401。
+  // 若吊销失败则回滚密码哈希（fail-closed：宁可改密失败重来，也不留「密码已变旧token仍有效」窗口）。
+  try {
+    await deleteAllSessions();
+  } catch (err) {
+    await kvPutJSON(ADMIN_KEY, admin);
+    throw new Error('改密成功但会话吊销失败，已回滚密码，请重试');
+  }
 }
